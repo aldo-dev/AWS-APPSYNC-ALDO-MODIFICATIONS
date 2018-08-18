@@ -1,2 +1,2 @@
-# aws-appsync-aldo
+# AWS-Appsync-Aldo
 
