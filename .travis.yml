@@ -1,0 +1,8 @@
+language: swift
+osx_image: xcode9.1
+xcode_workspace: AWSAppSyncClient.xcworkspace 
+xcode_scheme: AWSAppSync
+before_install:
+    - pod update
+script:
+    - xcodebuild -workspace AWSAppSyncClient.xcworkspace -scheme AWSAppSync build
