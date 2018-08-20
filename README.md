@@ -26,6 +26,7 @@ The main challenge ist that due to the network conditions subscription might fai
 # Known issues:
 - `MQTTClient` recognizes status very slow after several network issues. Might be a timer that is not updates correctly when a connetion is established correctly, so the next time if the error occurs it takes less time
 - Crash sometimes in `MQTTEncoder` in function `encodeMessage` when trying to release a semaphore 
+- As there is no way to cancel the Promise if a syncing process is canceled the promise will still return the result thus causing the client to receive sync payload several times under certain conditions
 
 # What to improve 
 - I'd redesign `AWSAppSyncHTTPNetworkTransport` to have only one method that is dictated by protocol `NetworkTransport`. All the rest modifications/adjustment should be done through decoration. For example override_map could have been done that way, the same thing for `sendSubcriptionRequest`
