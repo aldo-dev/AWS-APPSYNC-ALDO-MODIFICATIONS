@@ -9,24 +9,25 @@
 
 ### Modifications:
 - Decoupling the logic so it can be testable
-- Throught the usage of design patterns adapted architecture for the testing and scalability
+- Added the usage of design patterns adapted architecture for the testing and scalability
 
 
 ### What has been fixed:
-The main case that we are trying to fix with this update is sustanable websocket connection. If the connection is dropped for any reasons it should be able to reconnect itself. In addition if during the network drop(or app spend time in the background) the logic should send missing events that is made through calling a query.
+The main case that we are trying to fix with this update is sustanable websocket connections. If the connection is dropped for any reason, it should be able to reconnect itself. In addition, during network drops (or the app spending time in the background) logic was added to send missing events through calling a query.
 
-The main challenge ist that due to the network conditions subscription might fail 5 different levels(see below), so the logic should be able to recover on those levels
-- Requesting topics/url with token
+Due to degraded or interrupted network conditions, subscriptions might fail at 5 different levels (see below). Logic should exist to be able to recover on those levels.
+- Requesting topics/url with a token
 - Syncing part
-- Establishing connection
-- when Cognito Token is expired
-- when requesting new token update
+- Establishing a connection
+- Cognito Token expiry
+- When requesting a new token update
 
 
 # Known issues:
-- `MQTTClient` recognizes status very slow after several network issues. Might be a timer that is not updates correctly when a connetion is established correctly, so the next time if the error occurs it takes less time
+- `MQTTClient` recognizes status very slow after several network issues. This might be due to a timer that is not updated properly when a connection is established correctly, so the next time if the error occurs it takes less time
 - Crash sometimes in `MQTTEncoder` in function `encodeMessage` when trying to release a semaphore 
-- As there is no way to cancel the Promise if a syncing process is canceled the promise will still return the result thus causing the client to receive sync payload several times under certain conditions
+- As there is no way to cancel the Promise if a syncing process is canceled the Promise will still return the result thus causing the client to receive sync payload several times under certain conditions
 
 # What to improve 
-- I'd redesign `AWSAppSyncHTTPNetworkTransport` to have only one method that is dictated by protocol `NetworkTransport`. All the rest modifications/adjustment should be done through decoration. For example override_map could have been done that way, the same thing for `sendSubcriptionRequest`
+- Redesign `AWSAppSyncHTTPNetworkTransport` to only have one method that is dictated by protocol `NetworkTransport`. All the other modifications/adjustments should be done through decoration. For example, override_map could have been done that way, also `sendSubcriptionRequest`
+
