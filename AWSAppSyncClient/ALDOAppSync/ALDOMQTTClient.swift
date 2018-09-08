@@ -14,7 +14,7 @@ struct MessageData {
 }
 
 protocol ALDOMQTTClientConnector {
-    func connect(withClientID id: String, host: String, statusCallBack: @escaping (Promise<MQTTStatus>) -> Void)
+    func connect(withClientID id: String, host: String, statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void)
     func subscribe(toTopic topic: String!, callback: @escaping (Promise<MessageData>) -> Void)
     func disconnect(topic: String)
     func disconnectAll()
@@ -39,7 +39,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     private let proccessingQueue: QueueObject
     private let serialQueue = DispatchQueue(label: "com.ALDOMQTTClient.serial")
 
-    private var currentState: MQTTStatus = .unknown
+    private var currentState: AWSIoTMQTTStatus = .unknown
     private let logger: AWSLogger?
     
     init(client: MQTTClientConnector,
@@ -56,21 +56,21 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     /// - Parameters:
     ///   - id: client id
     ///   - host: host
-    ///   - statusCallBack: @escaping (Promise<MQTTStatus>) -> Void
+    ///   - statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void
     func connect(withClientID id: String,
                  host: String,
-                 statusCallBack: @escaping (Promise<MQTTStatus>) -> Void) {
+                 statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void) {
         
         guard currentState != .connected && currentState != .connecting else {
             callStatusChangedIfNeed(for: currentState, { statusCallBack(Promise(fulfilled: currentState)) })
             return
         }
         
-        logger?.log(message: "Establish connection", filename: #file, line: #line, funcname: #function)
+        logger?.log(message: "Establish connection  for client id: \(id)", filename: #file, line: #line, funcname: #function)
         updateStateOfQueueForNewState(.connecting)
         currentState = .connecting
         let _ = self.client.connect(withClientId: id,
-                            toHost: host,
+                            presignedURL: host,
                             statusCallback: {[weak self] (status) in
                                self?.processNewStatus(status, statusCallBack: statusCallBack)
                                 
@@ -89,7 +89,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     }
     
     
-    private func processNewStatus(_ status: MQTTStatus, statusCallBack: @escaping (Promise<MQTTStatus>) -> Void ) {
+    private func processNewStatus(_ status: AWSIoTMQTTStatus, statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void ) {
         serialQueue.sync { [weak self] in
             self?.updateStateOfQueueForNewState(status)
             self?.callStatusChangedIfNeed(for: status, { statusCallBack(Promise(fulfilled: status)) })
@@ -104,7 +104,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
         }
     }
     
-    private func callStatusChangedIfNeed(for newStatus: MQTTStatus, _ closure: ()->Void ) {
+    private func callStatusChangedIfNeed(for newStatus: AWSIoTMQTTStatus, _ closure: ()->Void ) {
         guard connectionHasChanged(for: newStatus) else { return }
         logger?.log(message: "Will call status callback with \(currentState)",
                     filename: #file,
@@ -112,7 +112,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
                     funcname: #function)
         closure()
     }
-    private func connectionHasChanged(for status: MQTTStatus) -> Bool {
+    private func connectionHasChanged(for status: AWSIoTMQTTStatus) -> Bool {
         switch (currentState, status) {
         case (.connecting,.connected),
              (.connected,.disconnected),
@@ -128,7 +128,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
         }
     }
     
-    private func updateStateOfQueueForNewState(_ status: MQTTStatus) {
+    private func updateStateOfQueueForNewState(_ status: AWSIoTMQTTStatus) {
         logger?.log(message: "Will update state from \(currentState.rawValue) to \(status.rawValue)",
                     filename: #file,
                     line: #line,
@@ -145,6 +145,11 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
                                   callback: @escaping (Promise<MessageData>) -> Void) {
         logger?.log(message: "Pass item to queue subscribing to topic \(topic)", filename: #file, line: #line, funcname: #function)
         proccessingQueue.async { [weak self] in
+            guard self?.currentState == .connected else {
+                self?.logger?.log(message: "State is not connected, discarding: \(topic)", filename: #file, line: #line, funcname: #function)
+                return
+                
+            }
             self?.logger?.log(message: "Start subscribing to topic \(topic)", filename: #file, line: #line, funcname: #function)
             self?.client.subscribe(toTopic: topic, qos: 1, extendedCallback: { (_, _, data) in
                 self?.proccessResponse(forTopic: topic, data: data, using: callback)

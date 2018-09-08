@@ -7,11 +7,14 @@
 //
 
 import Foundation
+import Reachability
 @testable import AWSAppSync
 
-final class AWSNetworkTransportMock<T>: AWSNetworkTransport  where T : GraphQLOperation {
+final class AWSNetworkTransportMock<T>: AWSNetworkTransport,ReachabilityObserver  where T : GraphQLOperation {
+   
     
     private(set) var operations: [T] = []
+    private(set) var subscriptionOperations: [T] = []
     private(set) var datas: [Data] = []
     
     private(set) var jsonCompletionHandler: ((JSONObject?, Error?) -> Void)?
@@ -32,6 +35,7 @@ final class AWSNetworkTransportMock<T>: AWSNetworkTransport  where T : GraphQLOp
     
     func sendSubscriptionRequest<Operation>(operation: Operation,
                                             completionHandler: @escaping (JSONObject?, Error?) -> Void) throws -> Cancellable where Operation : GraphQLOperation {
+        subscriptionOperations.append(operation as! T)
         jsonCompletionHandler = completionHandler
         return FakeCancellable()
     }
@@ -39,6 +43,10 @@ final class AWSNetworkTransportMock<T>: AWSNetworkTransport  where T : GraphQLOp
     func clear() {
         operations = []
         datas = []
+    }
+    
+    func hasChanged(to: Reachability.Connection) {
+        
     }
     
 }

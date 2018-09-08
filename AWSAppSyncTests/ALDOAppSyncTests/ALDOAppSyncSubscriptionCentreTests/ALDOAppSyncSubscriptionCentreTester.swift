@@ -57,7 +57,7 @@ final class ALDOAppSyncSubscriptionCentreTester {
         centreToTest.addObserver(connectionObserverMock)
     }
     
-    func emulateStatusChange(newStatus: MQTTStatus) {
+    func emulateStatusChange(newStatus: AWSIoTMQTTStatus) {
         connectorMock.sendStatus(newStatus)
     }
     

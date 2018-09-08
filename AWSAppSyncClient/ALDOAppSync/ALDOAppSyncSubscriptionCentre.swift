@@ -8,13 +8,13 @@
 import Foundation
 
 protocol MQTTClientConnector: class {
-    func connect(withClientId: String!, toHost: String!, statusCallback: ((MQTTStatus) -> Void)!) -> Bool
-    func subscribe(toTopic: String!, qos: UInt8, extendedCallback: MQTTExtendedNewMessageBlock!)
+    func connect(withClientId: String!, presignedURL: String!, statusCallback: ((AWSIoTMQTTStatus) -> Void)!) -> Bool
+    func subscribe(toTopic: String!, qos: UInt8, extendedCallback: AWSIoTMQTTExtendedNewMessageBlock!)
     func unsubscribeTopic(_ topic: String!)
     func disconnect()
 }
 
-extension MQTTClient: MQTTClientConnector {}
+extension AWSIoTMQTTClient: MQTTClientConnector {}
 
 protocol SubscriptionCentre {
     func subscribe(watcher: SubscriptionWatcher)
@@ -204,7 +204,7 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
         }
     }
     
-    private func monitor(status: Promise<MQTTStatus>) {
+    private func monitor(status: Promise<AWSIoTMQTTStatus>) {
         
         status.flatMap(statusProccessor.proccessStatus)
               .andThen({ [weak self] _ in self?.connectionEstablished() })

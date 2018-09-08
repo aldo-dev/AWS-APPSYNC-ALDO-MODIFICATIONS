@@ -99,6 +99,20 @@ class ALDOMQTTClientTestCases: XCTestCase {
     }
     
     
+    func test_subscribe_is_paused() {
+        tester.connect(to: "host", with: "id")
+        tester.subscribe(to: "topic")
+        tester.testSubscribedTo(topics: [])
+    }
+    
+    func test_discards_paused_tasks_if_connection_is_error() {
+        tester.connect(to: "host", with: "id")
+        tester.emulateStatus(.connecting)
+        tester.subscribe(to: "topic")
+        tester.emulateStatus(.disconnected)
+        tester.testSubscribedTo(topics: [])
+    }
+    
     func test_subscribe_called_for_waiting_state() {
         tester.connect(to: "host", with: "id")
         tester.emulateStatus(.connected)

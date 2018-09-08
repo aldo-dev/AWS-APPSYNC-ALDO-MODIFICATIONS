@@ -258,7 +258,7 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
     private var offlineMuationCacheClient : AWSAppSyncOfflineMutationCache?
     private var offlineMutationExecutor: MutationExecutor?
     private var autoSubmitOfflineMutations: Bool = false
-    private var mqttClient = MQTTClient<AnyObject, AnyObject>()
+    private var mqttClient = AWSIoTMQTTClient<AnyObject, AnyObject>()
     private var appSyncMQTTClient = AppSyncMQTTClient()
     private var subscriptionCentre: (SubscriptionCentre & SubscriptionConnectionSubject)!
     private var subscriptionMetaDataCache: AWSSubscriptionMetaDataCache?
@@ -323,7 +323,7 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         self.offlineMutationExecutor = MutationExecutor(networkClient: self.httpTransport!, appSyncClient: self, snapshotProcessController: SnapshotProcessController(endpointURL:self.appSyncConfiguration.url), fileURL: self.appSyncConfiguration.databaseURL)
         
         networkStatusWatchers.append(self.offlineMutationExecutor!)
-        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOMQTTClient(client:  MQTTClient<AnyObject, AnyObject>(),
+        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOMQTTClient(client:  AWSIoTMQTTClient<AnyObject, AnyObject>(),
                                                                            logger: logger),
                                                     logger: logger)
         let decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre, logger: logger)
@@ -361,9 +361,18 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
                 }
             }
             
+            self.logger?.log(message: "Reachable state: \(reachability.connection)",
+                             filename: #file,
+                             line: #line,
+                             funcname: #function)
             self.notifyReachabilityObservers(withState: reachability.connection)
         }
+        
         reachability!.whenUnreachable = { [weak self] reachability in
+            self?.logger?.log(message: "Reachable state: \(reachability.connection)",
+                              filename: #file,
+                              line: #line,
+                              funcname: #function)
             self?.notifyReachabilityObservers(withState: reachability.connection)
         }
         

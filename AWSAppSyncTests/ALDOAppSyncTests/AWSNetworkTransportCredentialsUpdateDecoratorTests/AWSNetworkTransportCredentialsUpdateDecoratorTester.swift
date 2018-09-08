@@ -16,6 +16,7 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
     let networkTransportMock: AWSNetworkTransportMock<MockGraphQLQuery>
     let credentialsUpdaterMock: CredentialsUpdaterMock
     var responses: [GraphQLResponse<MockGraphQLQuery>] = []
+    var jsonResponses: [JSONObject] = []
     var errors: [Error] = []
     
     init() {
@@ -37,6 +38,17 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
         }
     }
     
+    func sendSubscriptionRequest() {
+        let _ = try! decoratorToTest.sendSubscriptionRequest(operation: MockGraphQLQuery()) {[weak self] (json, error) in
+            if let error = error {
+                self?.errors.append(error)
+            }
+            if let json = json {
+                self?.jsonResponses.append(json)
+            }
+        }
+    }
+    
     func emulateCredentialsUpdateWithSuccess() {
         credentialsUpdaterMock.completion?(Promise(fulfilled: ()))
     }
@@ -53,6 +65,7 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
         let urlResposne = HTTPURLResponse(url: URL(fileURLWithPath: "Empty"), statusCode: 401, httpVersion: nil, headerFields: nil)
         let error = AWSAppSyncClientError(body: nil, response: urlResposne, isInternalError: false, additionalInfo: nil)
         networkTransportMock.sendOperationCompletion?(nil, error)
+        networkTransportMock.jsonCompletionHandler?(nil, error)
     }
 
     func checkCredentialsUpdaterCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
@@ -61,5 +74,9 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
     
     func checkSendQueryCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(numberOfTimes, networkTransportMock.operations.count,file: file, line: line)
+    }
+    
+    func checkSendSubscriptionRequestCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(numberOfTimes, networkTransportMock.subscriptionOperations.count,file: file, line: line)
     }
 }

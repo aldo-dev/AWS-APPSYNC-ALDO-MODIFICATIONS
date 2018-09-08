@@ -54,19 +54,25 @@ final class QueueObjectMock: QueueObject {
     private(set) var executeCalled = 0
     private(set) var syncCalled = 0
     private(set) var asyncAfter = 0
-    
+    private(set) var blocks: [() -> Void] = []
     func suspend() {
         suspendCalled += 1
     }
     
     func resume() {
         resumeCalled += 1
+        if abs(suspendCalled - resumeCalled) == 0 {
+            blocks.forEach({ $0() })
+            blocks = []
+        }
     }
     
     func async(execute: @escaping () -> Void) {
         executeCalled += 1
         if abs(suspendCalled - resumeCalled) == 0 {
              execute()
+        } else {
+            blocks.append(execute)
         }
     }
     
@@ -74,6 +80,8 @@ final class QueueObjectMock: QueueObject {
         syncCalled += 1
         if abs(suspendCalled - resumeCalled) == 0 {
             execute()
+        }else {
+            blocks.append(execute)
         }
     }
     

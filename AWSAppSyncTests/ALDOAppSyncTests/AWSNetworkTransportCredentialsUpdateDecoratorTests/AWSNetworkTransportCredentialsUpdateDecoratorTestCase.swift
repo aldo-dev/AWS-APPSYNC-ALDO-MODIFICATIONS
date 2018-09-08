@@ -21,6 +21,29 @@ class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
         tester.sendQuery()
         tester.emulateQueryResponseWith401Error()
         tester.checkCredentialsUpdaterCalled(numberOfTimes: 1)
+        
+    }
+    
+    func test_if_error_401_for_subscription_request_should_call_credentials_updater() {
+        tester.sendSubscriptionRequest()
+        tester.emulateQueryResponseWith401Error()
+        tester.checkCredentialsUpdaterCalled(numberOfTimes: 1)
+        tester.emulateCredentialsUpdateWithSuccess()
+        tester.checkSendSubscriptionRequestCalled(numberOfTimes: 2)
+    }
+    
+    func test_send_subscription_no_error(){
+        tester.sendSubscriptionRequest()
+        tester.emulateQueryResponseWithSuccess()
+        tester.checkSendSubscriptionRequestCalled(numberOfTimes: 1)
+        tester.checkCredentialsUpdaterCalled(numberOfTimes: 0)
+    }
+    
+    func test_send_query_no_error(){
+        tester.sendQuery()
+        tester.emulateQueryResponseWithSuccess()
+        tester.checkSendQueryCalled(numberOfTimes: 1)
+        tester.checkCredentialsUpdaterCalled(numberOfTimes: 0)
     }
     
     func test_if_error_401_should_pause_next_calls() {
@@ -40,6 +63,8 @@ class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
         tester.resetSendQueryCounter()
         tester.emulateCredentialsUpdateWithSuccess()
         tester.checkSendQueryCalled(numberOfTimes: 3)
-        
     }
+    
+    
+    
 }

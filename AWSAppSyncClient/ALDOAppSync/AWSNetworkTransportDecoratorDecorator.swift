@@ -13,6 +13,9 @@ protocol ReachabilityObserver {
     func hasChanged(to: Reachability.Connection)
 }
 
+public var NSURLNetworkRequestCancelledCode = -999
+public var NSURLNetworkRequestUnauthorizedCode = 401
+
 final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObserver, Loggable {
      
     let decorated: AWSNetworkTransport
@@ -39,8 +42,16 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
     // MARK: - ReachabilityObserver Implementation
     
     func hasChanged(to state: Reachability.Connection) {
+        logger?.log(message: "Network status has changed to \(state)",
+                   filename: #file,
+                   line: #line,
+                   funcname: #function)
         currentState = state
         if state != .none {
+            logger?.log(message: "will continue executing items",
+                        filename: #file,
+                        line: #line,
+                        funcname: #function)
             executingItems.forEach({ $0.perform() })
         }
     }
@@ -62,7 +73,7 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
         let item = getOperationItem(operation: operation,
                                     overrideMap: overrideMap,
                                     completionHandler: completionHandler)
-        logger?.log(message: "Create item with id: \(item.id) for operation \(Operation.requestString)",
+        logger?.log(message: "Create item with id: \(item.id) for operation \(Operation.operationString)",
                     filename: #file,
                     line: #line,
                     funcname: #function)
@@ -226,14 +237,12 @@ extension AWSNetworkTransportDecorator {
     fileprivate func shouldPause(forError error: Error) -> Bool {
         let code = (error as NSError).code
         return code == NSURLErrorNotConnectedToInternet ||
-               code == NSURLErrorNetworkConnectionLost ||
-               code == NSURLErrorTimedOut
-        
+               code == NSURLErrorNetworkConnectionLost
     }
     
     fileprivate func shouldRetry(forError error: Error) -> Bool {
         return (error as? AWSAppSyncClientError).flatMap({ $0.response})
-            .map({ $0.statusCode != 401 }) ?? true
+                                                .map({ $0.statusCode != NSURLNetworkRequestUnauthorizedCode }) ?? true
     }
 }
 

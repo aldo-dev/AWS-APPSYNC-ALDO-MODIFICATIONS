@@ -88,7 +88,7 @@ final class AWSNetworkTransportCredentialsUpdateDecorator: AWSNetworkTransport,R
         let item = getOperationItem(operation: operation,
                                     overrideMap: overrideMap,
                                     completionHandler: completionHandler)
-        logger?.log(message: "Create item with id: \(item.id) for operation \(Operation.requestString)",
+        logger?.log(message: "Create item with id: \(item.id) for operation \(Operation.operationString)",
             filename: #file,
             line: #line,
             funcname: #function)
@@ -137,9 +137,10 @@ final class AWSNetworkTransportCredentialsUpdateDecorator: AWSNetworkTransport,R
                                            completionHandler: @escaping (JSONObject?, Error?) -> Void) -> WorkItem where Operation : GraphQLOperation {
         let item = itemFactory.createItem()
         let id = item.id
-        
+        self.logger?.log(message: "Creating item with id \(id) for operation \(Operation.operationString)", filename: #file, line: #line, funcname: #function)
         item.setWork { [weak self] () -> Cancellable in
-            self?.sendRequest(operation: operation, forItemID: id, completionHandler: completionHandler) ?? EmptyCancellable()
+            self?.logger?.log(message: "Sending request \(Operation.operationString)", filename: #file, line: #line, funcname: #function)
+           return self?.sendRequest(operation: operation, forItemID: id, completionHandler: completionHandler) ?? EmptyCancellable()
         }
         
         item.setCancelCallback { [weak self] in
@@ -187,6 +188,7 @@ final class AWSNetworkTransportCredentialsUpdateDecorator: AWSNetworkTransport,R
                                             completion: @escaping (Response?, Error?) -> Void) {
         logger?.log(message: "Received error for item id \(id)", filename: #file, line: #line, funcname: #function)
         logger?.log(error: error, filename: #file, line: #line, funcname: #function)
+        
         guard !shouldPause(forError: error) else  {
             requestCredentials()
             return
@@ -197,12 +199,16 @@ final class AWSNetworkTransportCredentialsUpdateDecorator: AWSNetworkTransport,R
     }
     
     fileprivate func requestCredentials() {
+        
         if !waitingForCredentials {
+            logger?.log(message: "Requesting credentials", filename: #file, line: #line, funcname: #function)
             waitingForCredentials = true
             credentialsUpdater.refreshToken { [weak self] (result) in
                 self?.waitingForCredentials = false
                 result.andThen({[ weak self] _ in  self?.performPausedItems() })
+                      .andThen({[weak self] _ in self?.logger?.log(message: "Received new token", filename: #file, line: #line, funcname: #function)})
                       .catch({ [weak self] _ in self?.requestCredentials() })
+                      .catch({ [weak self] in self?.logger?.log(error: $0, filename: #file, line: #line, funcname: #function)})
             }
         }
     }

@@ -15,13 +15,13 @@ final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector {
     private(set) var disconnectAllCount = 0
     private(set) var connectedClients: [String] = []
     private(set) var connectedHosts: [String] = []
-    private(set) var statusCallback: ((Promise<MQTTStatus>) -> Void)?
+    private(set) var statusCallback: ((Promise<AWSIoTMQTTStatus>) -> Void)?
     private(set) var subscribedTopics: [String] = []
     private(set) var extendedCallback: ((Promise<MessageData>) -> Void)?
     
     func connect(withClientID id: String,
                  host: String,
-                 statusCallBack: @escaping (Promise<MQTTStatus>) -> Void) {
+                 statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void) {
         connectedClients.append(id)
         connectedHosts.append(host)
         statusCallback = statusCallBack
@@ -40,7 +40,7 @@ final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector {
         disconnectAllCount += 1
     }
     
-    func sendStatus(_ status: MQTTStatus) {
+    func sendStatus(_ status: AWSIoTMQTTStatus) {
         statusCallback?(Promise(fulfilled: status))
     }
     

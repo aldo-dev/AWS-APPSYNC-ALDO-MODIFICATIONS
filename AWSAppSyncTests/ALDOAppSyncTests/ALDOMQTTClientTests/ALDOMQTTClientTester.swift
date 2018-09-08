@@ -30,7 +30,7 @@ final class ALDOMQTTClientTester {
     
     private let clientToTest: ALDOMQTTClient
     private let connectorMock: MQTTClientConnectorMock
-    private var receivedStatus: Result<MQTTStatus>?
+    private var receivedStatus: Result<AWSIoTMQTTStatus>?
     private var receivedMessage: Result<MessageData>?
     private var queueMock = QueueObjectMock()
     init() {
@@ -51,7 +51,7 @@ final class ALDOMQTTClientTester {
                                callback: { self.receivedMessage = $0.result })
     }
     
-    func emulateStatus(_ status: MQTTStatus) {
+    func emulateStatus(_ status: AWSIoTMQTTStatus) {
         receivedStatus = nil
         connectorMock.send(status: status)
     }
@@ -76,7 +76,7 @@ final class ALDOMQTTClientTester {
         XCTAssertEqual(connectorMock.connectedClients, ids,file: file, line: line)
     }
     
-    func testExpectedStatus(_ status: MQTTStatus?,file: StaticString = #file, line: UInt = #line) {
+    func testExpectedStatus(_ status: AWSIoTMQTTStatus?,file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(status, receivedStatus?.value,file: file, line: line)
     }
     

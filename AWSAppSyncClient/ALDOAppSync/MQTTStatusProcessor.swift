@@ -13,8 +13,8 @@ struct MQTTStatusError: Error {
 
 final class MQTTStatusProcessor: Loggable {
     
-   func proccessStatus(_ status: MQTTStatus) -> Promise<MQTTStatus> {
-        log(with: "Proccessing \(status.rawValue)")
+   func proccessStatus(_ status: AWSIoTMQTTStatus) -> Promise<AWSIoTMQTTStatus> {
+
         switch status {
         case .connecting,
              .connected: return Promise(fulfilled: status)

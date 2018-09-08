@@ -14,23 +14,23 @@ final class MQTTClientConnectorMock: MQTTClientConnector {
     private(set) var disconnectCount = 0
     private(set) var connectedClients: [String] = []
     private(set) var connectedHosts: [String] = []
-    private(set) var statusCallbacks: [((MQTTStatus) -> Void)] = []
+    private(set) var statusCallbacks: [((AWSIoTMQTTStatus) -> Void)] = []
     private(set) var subscribedTopics: [String] = []
-    private(set) var extendedCallbacks: [MQTTExtendedNewMessageBlock] = []
+    private(set) var extendedCallbacks: [AWSIoTMQTTExtendedNewMessageBlock] = []
     private(set) var unsubscribedTopics: [String] = []
     
-    func send(status: MQTTStatus) {
+    func send(status: AWSIoTMQTTStatus) {
         statusCallbacks.forEach({ $0(status) })
     }
     
-    func connect(withClientId: String!, toHost: String!, statusCallback: ((MQTTStatus) -> Void)!) -> Bool {
+    func connect(withClientId: String!, presignedURL: String!, statusCallback: ((AWSIoTMQTTStatus) -> Void)!) -> Bool {
         connectedClients.append(withClientId)
-        connectedHosts.append(toHost)
+        connectedHosts.append(presignedURL)
         statusCallbacks.append(statusCallback)
         return true
     }
     
-    func subscribe(toTopic: String!, qos: UInt8, extendedCallback: MQTTExtendedNewMessageBlock!) {
+    func subscribe(toTopic: String!, qos: UInt8, extendedCallback: AWSIoTMQTTExtendedNewMessageBlock!) {
         subscribedTopics.append(toTopic)
         extendedCallbacks.append(extendedCallback)
     }
