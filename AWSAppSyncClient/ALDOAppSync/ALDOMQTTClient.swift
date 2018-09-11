@@ -33,8 +33,7 @@ enum ALDOMQTTClientError: Error {
 /// Allows to establish connection only once
 /// Subscribe to the topic is paused until the connection is established
 final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
-    
-    private static let proccessingQueue: QueueObject = ProcessingQueueObject.serial(withLabel: "com.ALDOMQTTClient.proccessing")
+
     private var client: MQTTClientConnector
     private var statusProcessor = MQTTStatusProcessor()
     private var semaphore = DispatchSemaphore(value: 1)
@@ -46,7 +45,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     private var subscriptionWorkItems: [DispatchWorkItem] = []
     
     init(client: MQTTClientConnector,
-         proccessingQueue: QueueObject = ALDOMQTTClient.proccessingQueue,
+         proccessingQueue: QueueObject = ProcessingQueueObject.serial(withLabel: "com.ALDOMQTTClient.proccessing"),
          logger: AWSLogger? = nil) {
         self.client = client
         self.logger = logger

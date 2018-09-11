@@ -81,7 +81,7 @@ final class ALDOConnector: ALDOSubscriptionConnector {
             return
         }
         
-        connection.client.subscribe(toTopic: topic, callback: callback)
+        connection.subscribe(toTopic: topic, callback: callback)
     }
     
     
@@ -91,12 +91,13 @@ final class ALDOConnector: ALDOSubscriptionConnector {
         
         connections.filter({ $0.isEmpty }).forEach({ $0.disconnectAll() })
         
-        connections = connections.filter({!$0.isEmpty})
+        connections = connections.filter({ !$0.isEmpty })
 
     }
     
     func disconnectAll() {
-        connections.forEach({ $0.client.disconnectAll() })
+        connections.forEach({ $0.disconnectAll() })
+        connections = []
         statusCallbacks = [:]
     }
     
