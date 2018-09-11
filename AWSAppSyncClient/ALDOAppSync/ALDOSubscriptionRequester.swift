@@ -32,7 +32,7 @@ final class ALDOSubscriptionRequester: SubscriptionRequester, Loggable {
             guard let `self` = self else { return }
             let _ = try self.httpLevelRequesting.sendSubscriptionRequest(operation: subscription,
                                                                          completionHandler: { (json, error) in
-                        
+
                 guard let json = json else {
                     errorCompletion(error ?? NSError())
                     return

@@ -9,7 +9,8 @@
 import Foundation
 @testable import AWSAppSync
 
-final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector {
+final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector, ALDOSubscriptionConnector {
+ 
     
     private(set) var disconnectedTopics: [String] = []
     private(set) var disconnectAllCount = 0
@@ -18,6 +19,8 @@ final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector {
     private(set) var statusCallback: ((Promise<AWSIoTMQTTStatus>) -> Void)?
     private(set) var subscribedTopics: [String] = []
     private(set) var extendedCallback: ((Promise<MessageData>) -> Void)?
+    
+    private(set) var infos: [SubscriptionWatcherInfo] = []
     
     func connect(withClientID id: String,
                  host: String,
@@ -48,4 +51,14 @@ final class ALDOMQTTClientConnectorMock: ALDOMQTTClientConnector {
         extendedCallback?(Promise(fulfilled: MessageData.init(topic: topic, data: data)))
 
     }
+    
+    func connect(using info: SubscriptionWatcherInfo,
+                 statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void) {
+        infos.append(info)
+        connectedHosts.append(contentsOf: info.info.map({$0.url}))
+        connectedClients.append(contentsOf: info.info.map({$0.clientId}))
+        statusCallback = statusCallBack
+    }
+    
+    
 }

@@ -106,6 +106,10 @@
 		895F92C5211CA7DB000D42DD /* QueueObjectMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895F92C4211CA7DB000D42DD /* QueueObjectMock.swift */; };
 		895F92C7211CAB13000D42DD /* ProcessingQueueObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895F92C6211CAB13000D42DD /* ProcessingQueueObject.swift */; };
 		897A61F121237A4B00225D21 /* ALDOGraphQLOperationSenderDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897A61F021237A4B00225D21 /* ALDOGraphQLOperationSenderDecorator.swift */; };
+		89A4B52F21474C1300BA5F70 /* ALDOConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A4B52E21474C1300BA5F70 /* ALDOConnection.swift */; };
+		89B3BAA021472417009EC67B /* ALDOConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B3BA9F21472417009EC67B /* ALDOConnector.swift */; };
+		89B3BAA3214735AA009EC67B /* ALDOConnectorTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B3BAA2214735AA009EC67B /* ALDOConnectorTestCase.swift */; };
+		89B3BAA5214735DE009EC67B /* ALDOConnectorTester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B3BAA4214735DE009EC67B /* ALDOConnectorTester.swift */; };
 		89C2EFF8211B9BEF006B2AA0 /* MQTTStatusProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C2EFF6211B9BEF006B2AA0 /* MQTTStatusProcessor.swift */; };
 		89C2EFF9211B9BEF006B2AA0 /* WatcherSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C2EFF7211B9BEF006B2AA0 /* WatcherSource.swift */; };
 		89C89EF22121C98000A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C89EF12121C98000A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTestCase.swift */; };
@@ -250,6 +254,10 @@
 		895F92C4211CA7DB000D42DD /* QueueObjectMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueObjectMock.swift; sourceTree = "<group>"; };
 		895F92C6211CAB13000D42DD /* ProcessingQueueObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingQueueObject.swift; sourceTree = "<group>"; };
 		897A61F021237A4B00225D21 /* ALDOGraphQLOperationSenderDecorator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOGraphQLOperationSenderDecorator.swift; sourceTree = "<group>"; };
+		89A4B52E21474C1300BA5F70 /* ALDOConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOConnection.swift; sourceTree = "<group>"; };
+		89B3BA9F21472417009EC67B /* ALDOConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOConnector.swift; sourceTree = "<group>"; };
+		89B3BAA2214735AA009EC67B /* ALDOConnectorTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOConnectorTestCase.swift; sourceTree = "<group>"; };
+		89B3BAA4214735DE009EC67B /* ALDOConnectorTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOConnectorTester.swift; sourceTree = "<group>"; };
 		89C2EFF6211B9BEF006B2AA0 /* MQTTStatusProcessor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MQTTStatusProcessor.swift; sourceTree = "<group>"; };
 		89C2EFF7211B9BEF006B2AA0 /* WatcherSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WatcherSource.swift; sourceTree = "<group>"; };
 		89C89EF12121C98000A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTestCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ALDOAppSyncSubscriptionCentreReconnectorTestCase.swift; sourceTree = "<group>"; };
@@ -497,6 +505,8 @@
 				89189A6E21232E1300969CC6 /* ALDOGraphQLOperationSender.swift */,
 				897A61F021237A4B00225D21 /* ALDOGraphQLOperationSenderDecorator.swift */,
 				892FA1D4212721A8002D9CB6 /* WeakRetainer.swift */,
+				89B3BA9F21472417009EC67B /* ALDOConnector.swift */,
+				89A4B52E21474C1300BA5F70 /* ALDOConnection.swift */,
 			);
 			path = ALDOAppSync;
 			sourceTree = "<group>";
@@ -516,6 +526,7 @@
 		895F92BB211C97E8000D42DD /* ALDOAppSyncTests */ = {
 			isa = PBXGroup;
 			children = (
+				89B3BAA12147359B009EC67B /* ALDOConnectorTests */,
 				891753A3212B047100D5351F /* AWSNetworkTransportCredentialsUpdateDecoratorTests */,
 				892FA1CB2126183A002D9CB6 /* SubscriptionIntegrationTests */,
 				892FA1C22125D11D002D9CB6 /* ALDOSubscritionWatcherWithSyncTests */,
@@ -554,6 +565,15 @@
 				891753AA212B0C2A00D5351F /* CredentialsUpdaterMock.swift */,
 			);
 			path = Mocks;
+			sourceTree = "<group>";
+		};
+		89B3BAA12147359B009EC67B /* ALDOConnectorTests */ = {
+			isa = PBXGroup;
+			children = (
+				89B3BAA2214735AA009EC67B /* ALDOConnectorTestCase.swift */,
+				89B3BAA4214735DE009EC67B /* ALDOConnectorTester.swift */,
+			);
+			path = ALDOConnectorTests;
 			sourceTree = "<group>";
 		};
 		89C89EF02121C97000A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTests */ = {
@@ -831,6 +851,7 @@
 				178B31071FCDB34100EA4619 /* AWSAppSyncClientS3ObjectsExtensions.swift in Sources */,
 				17E009CF1FCAB234005031DB /* ResultOrPromise.swift in Sources */,
 				17E009DB1FCAB234005031DB /* NormalizedCache.swift in Sources */,
+				89A4B52F21474C1300BA5F70 /* ALDOConnection.swift in Sources */,
 				17E009C41FCAB234005031DB /* AsynchronousOperation.swift in Sources */,
 				89189A6F21232E1300969CC6 /* ALDOGraphQLOperationSender.swift in Sources */,
 				897A61F121237A4B00225D21 /* ALDOGraphQLOperationSenderDecorator.swift in Sources */,
@@ -848,6 +869,7 @@
 				17E009BE1FCAB234005031DB /* JSON.swift in Sources */,
 				17A66BA41F59FF69008DDA11 /* AWSAppSyncClient.swift in Sources */,
 				17E009C61FCAB234005031DB /* GraphQLSelectionSet.swift in Sources */,
+				89B3BAA021472417009EC67B /* ALDOConnector.swift in Sources */,
 				17E009C81FCAB234005031DB /* Locking.swift in Sources */,
 				17E009D61FCAB234005031DB /* GraphQLSelectionSetMapper.swift in Sources */,
 				41C7C9CD213864FC000C19E4 /* AWSMQttTxFlow.m in Sources */,
@@ -893,6 +915,7 @@
 				895F92C0211C981E000D42DD /* ALDOMQTTClientTester.swift in Sources */,
 				895F92C3211C9856000D42DD /* MQTTClientConnectorMock.swift in Sources */,
 				89C89F022121E75C00A3C2C8 /* MockGraphQLSelecitonSet.swift in Sources */,
+				89B3BAA3214735AA009EC67B /* ALDOConnectorTestCase.swift in Sources */,
 				892FA1C82125D2FD002D9CB6 /* MockGraphQLQuery.swift in Sources */,
 				89C89EF42121C98D00A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTester.swift in Sources */,
 				89CD024C211CD5280047A127 /* WatcherMock.swift in Sources */,
@@ -908,6 +931,7 @@
 				892FA1CD21261857002D9CB6 /* SubscriptionIntegrationTests.swift in Sources */,
 				89CD0248211CCF560047A127 /* ALDOAppSyncSubscriptionCentreTester.swift in Sources */,
 				89C89EF22121C98000A3C2C8 /* ALDOAppSyncSubscriptionCentreReconnectorTestCase.swift in Sources */,
+				89B3BAA5214735DE009EC67B /* ALDOConnectorTester.swift in Sources */,
 				89C89F062121E7BF00A3C2C8 /* SubscriptionRequestingMock.swift in Sources */,
 				89C89EFA2121D9CA00A3C2C8 /* DispatchTimeIntervalExtension.swift in Sources */,
 				891753A9212B06B600D5351F /* AWSNetworkTransportMock.swift in Sources */,

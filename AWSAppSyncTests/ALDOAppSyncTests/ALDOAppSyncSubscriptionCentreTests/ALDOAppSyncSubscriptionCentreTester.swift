@@ -90,7 +90,7 @@ final class ALDOAppSyncSubscriptionCentreTester {
     
     func checkEstablishConnection(file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(connectorMock.connectedHosts, infos.flatMap({$0.info.map({$0.url})}), file: file)
-        XCTAssertEqual(connectorMock.connectedClients, infos.flatMap({$0.info.map({$0.clientId})}), line: line)
+        XCTAssertEqual(connectorMock.connectedClients, infos.flatMap({$0.info.map({$0.clientId})}),file: file, line: line)
     }
     
     

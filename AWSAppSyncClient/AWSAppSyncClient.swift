@@ -323,8 +323,8 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         self.offlineMutationExecutor = MutationExecutor(networkClient: self.httpTransport!, appSyncClient: self, snapshotProcessController: SnapshotProcessController(endpointURL:self.appSyncConfiguration.url), fileURL: self.appSyncConfiguration.databaseURL)
         
         networkStatusWatchers.append(self.offlineMutationExecutor!)
-        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOMQTTClient(client:  AWSIoTMQTTClient<AnyObject, AnyObject>(),
-                                                                           logger: logger),
+        let factory = ALDOMQTTClientFactory(logger: logger)
+        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOConnector(factory: factory, logger: logger),
                                                     logger: logger)
         let decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre, logger: logger)
         subscriptionCentre = decoratedCentre

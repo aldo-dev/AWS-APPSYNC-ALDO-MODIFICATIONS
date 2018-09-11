@@ -32,17 +32,27 @@ protocol SubscriptionConnectionSubject {
     func removeObserver(_ observer: SubscriptionConnectionObserver)
 }
 
-enum ALDOAppSyncSubscriptionCentreState {
+enum ALDOAppSyncSubscriptionCentreState: Equatable {
+    static func == (lhs: ALDOAppSyncSubscriptionCentreState, rhs: ALDOAppSyncSubscriptionCentreState) -> Bool {
+        switch (lhs, rhs) {
+        case (.connected, .connected),
+             (.error,.error),
+             (.closed,.closed): return true
+        default: return false
+        }
+    }
+    
     case closed
     case connected
     case error(Error)
+    
 }
 
 /// Subscription centre mangages wathers subscribing/unsubscribing
 final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConnectionSubject, Loggable {
     
     private var source = WatcherSource<String>()
-    private let client: ALDOMQTTClientConnector
+    private let client: ALDOSubscriptionConnector
     private let statusProccessor = MQTTStatusProcessor()
     private var connectedTopics: [String] = []
     private var connectionErrorCallback: ErrorCallback?
@@ -51,7 +61,7 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     private var state: ALDOAppSyncSubscriptionCentreState = .closed
     private let logger: AWSLogger?
     
-    init(client: ALDOMQTTClientConnector,
+    init(client: ALDOSubscriptionConnector,
          logger: AWSLogger? = nil) {
         self.client = client
         self.logger = logger
@@ -66,7 +76,8 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     func subscribe(watcher: SubscriptionWatcher) {
         logger?.log(message: "Subscribing watcher", filename: #file, line: #line, funcname: #function)
         requestConnectionInfo(for: watcher)
-            .andThen({[weak self] in self?.logger?.log(message: "Received requested topics: \($0.topics)", filename: #file, line: #line, funcname: #function) })
+            .andThen({[weak self] in self?.logger?.log(message: "Received new topics: \($0.topics)", filename: #file, line: #line, funcname: #function) })
+            .andThen({[weak self] in self?.logger?.log(message: "Received  info: \($0.info.map({ "\($0.clientId) with topics: \($0.topics)" }))", filename: #file, line: #line, funcname: #function) })
             .andThen({ [weak self] in self?.establishConnection(with: $0)})
             .andThen({ [weak self] in self?.connect(to: $0.topics) })
             .catch({ [weak self] in self?.connectionErrorCallback?($0) })
@@ -111,7 +122,6 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
             self.closeConnectionIfNeed()
         }
     }
-    
     
     /// Add observer to listen connection status
     ///
@@ -177,19 +187,9 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     }
     
     private func establishConnection(with info: SubscriptionWatcherInfo) {
-        establishConnection(with: info.info.first?.clientId ?? "",
-                                  host:  info.info.first?.url ?? "")
+        client.connect(using: info, statusCallBack: { [weak self] in self?.monitor(status: $0) })
     }
     
-    private func establishConnection(with ID: String, host: String) {
-        
-        logger?.log(message: "Establishing connection for ID \(ID) with host \(host)",
-                    filename: #file,
-                    line: #line,
-                    funcname: #function)
-        
-        client.connect(withClientID: ID, host: host, statusCallBack: { [weak self] in self?.monitor(status: $0) })
-    }
     
     private func closeConnectionIfNeed() {
         if self.source.isEmpty {
@@ -220,6 +220,7 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     }
     
     private func connectionEstablished() {
+        guard state != .connected else { return }
         logger?.log(message: "Connection Established with success",
                     filename: #file,
                     line: #line,
@@ -235,6 +236,7 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     }
     
     private func connectionError(_ error: Error) {
+        guard state != .error(error) else { return }
         logger?.log(error: error,
                     filename: #file,
                     line: #line,
@@ -247,5 +249,4 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     private func notifyObserversConnectionError(_ error: Error) {
         connectionObservers.forEach({ $0.connectionError(error) })
     }
-
 }

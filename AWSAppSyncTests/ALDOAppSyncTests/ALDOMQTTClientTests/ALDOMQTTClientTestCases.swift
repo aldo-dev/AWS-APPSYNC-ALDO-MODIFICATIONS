@@ -54,7 +54,7 @@ class ALDOMQTTClientTestCases: XCTestCase {
         tester.testResumseQueueCalled(numberOfTimes: 1)
     }
     
-    func test_unpauses_queu_for_disconneted_status() {
+    func test_unpauses_queue_for_disconneted_status() {
         tester.connect(to: "host", with: "id")
         tester.emulateStatus(.disconnected)
         tester.testSuspendQueueCalled(numberOfTimes: 1)
@@ -186,6 +186,14 @@ class ALDOMQTTClientTestCases: XCTestCase {
         tester.testExpectedStatus(.connectionRefused)
     }
     
+    
+    func test_connection_flow_subscribe_to_topics() {
+        tester.connect(to: "host", with: "id")
+        tester.subscribe(to: "topic")
+        tester.emulateStatus(.connecting)
+        tester.emulateStatus(.connected)
+        tester.testSubscribedTo(topics: ["topic"])
+    }
     
     func test_should_notify_from_connected_to_errorProtocol() {
         tester.connect(to: "host", with: "id")

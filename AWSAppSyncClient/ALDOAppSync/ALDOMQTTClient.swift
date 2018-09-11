@@ -13,13 +13,15 @@ struct MessageData {
     let data: Data
 }
 
-protocol ALDOMQTTClientConnector {
-    func connect(withClientID id: String, host: String, statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void)
+protocol ALDOMQTTTopicSubscriber {
     func subscribe(toTopic topic: String!, callback: @escaping (Promise<MessageData>) -> Void)
     func disconnect(topic: String)
     func disconnectAll()
 }
 
+protocol ALDOMQTTClientConnector: ALDOMQTTTopicSubscriber {
+    func connect(withClientID id: String, host: String, statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void)
+}
 
 enum ALDOMQTTClientError: Error {
     case subscribingIsNotAllowed
@@ -39,8 +41,9 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     private let proccessingQueue: QueueObject
     private let serialQueue = DispatchQueue(label: "com.ALDOMQTTClient.serial")
 
-    private var currentState: AWSIoTMQTTStatus = .unknown
+    private var currentStatus: AWSIoTMQTTStatus = .unknown
     private let logger: AWSLogger?
+    private var subscriptionWorkItems: [DispatchWorkItem] = []
     
     init(client: MQTTClientConnector,
          proccessingQueue: QueueObject = ALDOMQTTClient.proccessingQueue,
@@ -61,19 +64,18 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
                  host: String,
                  statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void) {
         
-        guard currentState != .connected && currentState != .connecting else {
-            callStatusChangedIfNeed(for: currentState, { statusCallBack(Promise(fulfilled: currentState)) })
+        guard currentStatus != .connected && currentStatus != .connecting else {
+            callStatusChangedIfNeed(for: currentStatus, { statusCallBack(Promise(fulfilled: currentStatus)) })
             return
         }
         
         logger?.log(message: "Establish connection  for client id: \(id)", filename: #file, line: #line, funcname: #function)
         updateStateOfQueueForNewState(.connecting)
-        currentState = .connecting
+        currentStatus = .connecting
         let _ = self.client.connect(withClientId: id,
                             presignedURL: host,
                             statusCallback: {[weak self] (status) in
                                self?.processNewStatus(status, statusCallBack: statusCallBack)
-                                
         })
     }
     
@@ -93,12 +95,12 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
         serialQueue.sync { [weak self] in
             self?.updateStateOfQueueForNewState(status)
             self?.callStatusChangedIfNeed(for: status, { statusCallBack(Promise(fulfilled: status)) })
-            self?.currentState = status
+            self?.currentStatus = status
         }
     }
     
     private var errorStateForSubscribing: Promise<MessageData>? {
-        switch currentState {
+        switch currentStatus {
         case .connected,.connecting: return nil
         default: return Promise<MessageData>.init(rejected: ALDOMQTTClientError.subscribingIsNotAllowed)
         }
@@ -106,14 +108,14 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     
     private func callStatusChangedIfNeed(for newStatus: AWSIoTMQTTStatus, _ closure: ()->Void ) {
         guard connectionHasChanged(for: newStatus) else { return }
-        logger?.log(message: "Will call status callback with \(currentState)",
+        logger?.log(message: "Will call status callback with \(currentStatus)",
                     filename: #file,
                     line: #line,
                     funcname: #function)
         closure()
     }
     private func connectionHasChanged(for status: AWSIoTMQTTStatus) -> Bool {
-        switch (currentState, status) {
+        switch (currentStatus, status) {
         case (.connecting,.connected),
              (.connected,.disconnected),
              (.connected,.connectionRefused),
@@ -129,14 +131,19 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     }
     
     private func updateStateOfQueueForNewState(_ status: AWSIoTMQTTStatus) {
-        logger?.log(message: "Will update state from \(currentState.rawValue) to \(status.rawValue)",
+        logger?.log(message: "Will update state from \(currentStatus.rawValue) to \(status.rawValue)",
                     filename: #file,
                     line: #line,
                     funcname: #function)
-        switch (currentState, status) {
+        switch (currentStatus, status) {
         case (.connecting,.connecting): break
         case (_ , .connecting): proccessingQueue.suspend()
-        case (.connecting, _): proccessingQueue.resume()
+        case (.connecting, .connected):
+                    performSubscribeItems()
+                    proccessingQueue.resume()
+        case (.connecting, _):
+            cancelSubscribeItems()
+            proccessingQueue.resume()
         default: break
         }
     }
@@ -144,16 +151,40 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     private func startSubscribing(toTopic topic: String!,
                                   callback: @escaping (Promise<MessageData>) -> Void) {
         logger?.log(message: "Pass item to queue subscribing to topic \(topic)", filename: #file, line: #line, funcname: #function)
-        proccessingQueue.async { [weak self] in
-            guard self?.currentState == .connected else {
-                self?.logger?.log(message: "State is not connected, discarding: \(topic)", filename: #file, line: #line, funcname: #function)
-                return
-                
+        
+        let item = createSubscribeItem(for: topic, with: callback)
+        
+        switch currentStatus {
+            case .connected: proccessingQueue.async { item.perform() }
+            case .unknown, .connecting: subscriptionWorkItems.append(item)
+        default:
+            logger?.log(message: "Discarding item for \(topic) when current state is \(currentStatus.rawValue)", filename: #file, line: #line, funcname: #function)
+        }
+    }
+    
+    
+    private func performSubscribeItems() {
+        logger?.log(message: "Will perform subscribing items for current state  \(currentStatus.rawValue)", filename: #file, line: #line, funcname: #function)
+        subscriptionWorkItems.forEach { (item) in
+            proccessingQueue.async {
+                item.perform()
             }
-            self?.logger?.log(message: "Start subscribing to topic \(topic)", filename: #file, line: #line, funcname: #function)
-            self?.client.subscribe(toTopic: topic, qos: 1, extendedCallback: { (_, _, data) in
-                self?.proccessResponse(forTopic: topic, data: data, using: callback)
-            })
+        }
+    }
+    
+    private func cancelSubscribeItems() {
+           logger?.log(message: "Will cancel subscribing items for current state  \(currentStatus.rawValue)", filename: #file, line: #line, funcname: #function)
+        subscriptionWorkItems.forEach({ $0.cancel() })
+        subscriptionWorkItems = []
+    }
+    
+    private func createSubscribeItem(for topic: String,
+                                     with callback: @escaping (Promise<MessageData>) -> Void) -> DispatchWorkItem {
+        return  DispatchWorkItem { [weak self] in
+                    self?.logger?.log(message: "Start subscribing to topic \(topic)", filename: #file, line: #line, funcname: #function)
+                    self?.client.subscribe(toTopic: topic, qos: 1, extendedCallback: { (_, _, data) in
+                        self?.proccessResponse(forTopic: topic, data: data, using: callback)
+                })
         }
     }
     
@@ -173,6 +204,7 @@ final class ALDOMQTTClient: ALDOMQTTClientConnector, Loggable {
     
     func disconnectAll() {
         logger?.log(message: "Closing connection", filename: #file, line: #line, funcname: #function)
+        cancelSubscribeItems()
         client.disconnect()
     }
 }

@@ -52,7 +52,7 @@ public final class ALDOMQTTSubscritionWatcher<S: GraphQLSubscription, Set>: Subs
         logger?.log(message: "Received: \(data)", filename: #file, line: #line, funcname: #function)
         guard let callback = callback else { return }
         let newPromise = self.parser.transform(data, for: subscription)
-                                    .map({$0.0})
+                                    .map({ $0.0 })
         callback(newPromise)
     }
     

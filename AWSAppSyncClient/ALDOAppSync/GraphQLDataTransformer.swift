@@ -30,7 +30,6 @@ final class GraphQLDataBasicTransformer: GraphQLDataTransformer {
          return serializer.serialize(data, for: operation)
                           .flatMap(parser.parse)
                           .flatMap(extractResult)
-        
     }
     
     private func extractResult<D>(from result: GraphQLResult<D>, recordSet: RecordSet?) -> Promise<(D?,RecordSet?)>{
