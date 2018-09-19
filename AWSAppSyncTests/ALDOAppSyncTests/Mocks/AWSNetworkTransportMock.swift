@@ -17,26 +17,26 @@ final class AWSNetworkTransportMock<T>: AWSNetworkTransport,ReachabilityObserver
     private(set) var subscriptionOperations: [T] = []
     private(set) var datas: [Data] = []
     
-    private(set) var jsonCompletionHandler: ((JSONObject?, Error?) -> Void)?
-    private(set) var sendOperationCompletion: ((GraphQLResponse<T>?, Error?) -> Void)?
+    private(set) var jsonCompletionHandler: [((JSONObject?, Error?) -> Void)] = []
+    private(set) var sendOperationCompletion: [((GraphQLResponse<T>?, Error?) -> Void)] = []
     
     func send(data: Data, completionHandler: ((JSONObject?, Error?) -> Void)?) {
         datas.append(data)
-        jsonCompletionHandler = completionHandler
+        jsonCompletionHandler.append(completionHandler!)
     }
     
     func send<Operation>(operation: Operation,
                          overrideMap: [String : String],
                          completionHandler: @escaping (GraphQLResponse<Operation>?, Error?) -> Void) -> Cancellable where Operation : GraphQLOperation {
         operations.append(operation as! T)
-        sendOperationCompletion = completionHandler as! ((GraphQLResponse<T>?, Error?) -> Void)
+        sendOperationCompletion.append(completionHandler as! ((GraphQLResponse<T>?, Error?) -> Void))
         return FakeCancellable()
     }
     
     func sendSubscriptionRequest<Operation>(operation: Operation,
                                             completionHandler: @escaping (JSONObject?, Error?) -> Void) throws -> Cancellable where Operation : GraphQLOperation {
         subscriptionOperations.append(operation as! T)
-        jsonCompletionHandler = completionHandler
+        jsonCompletionHandler.append(completionHandler)
         return FakeCancellable()
     }
     

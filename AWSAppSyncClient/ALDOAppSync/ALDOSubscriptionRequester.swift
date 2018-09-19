@@ -13,16 +13,24 @@ protocol SubscriptionRequester: class {
     func sendRequest<Operation: GraphQLOperation>(for subscription: Operation) -> Promise<SubscriptionWatcherInfo>
 }
 
+protocol SubscriptionResponseParser {
+     init(body: JSONObject)
+     func parseResult() throws -> AWSGraphQLSubscriptionResponse
+}
+extension AWSGraphQLSubscriptionResponseParser: SubscriptionResponseParser {}
 
 final class ALDOSubscriptionRequester: SubscriptionRequester, Loggable {
 
     private let httpLevelRequesting: SubscriptionRequesting
-    init(httpLevelRequesting: SubscriptionRequesting) {
+    private let parserType: SubscriptionResponseParser.Type
+    init(httpLevelRequesting: SubscriptionRequesting,
+         parserType: SubscriptionResponseParser.Type = AWSGraphQLSubscriptionResponseParser.self) {
         self.httpLevelRequesting = httpLevelRequesting
+        self.parserType = parserType
     }
     
     func sendRequest<Operation>(for subscription: Operation) -> Promise<SubscriptionWatcherInfo> where Operation : GraphQLOperation {
-        return send(for: subscription).map(AWSGraphQLSubscriptionResponseParser.init)
+        return send(for: subscription).map(parserType.init)
                                       .map({ try $0.parseResult() })
                                       .flatMap(self.extractResult)
     }

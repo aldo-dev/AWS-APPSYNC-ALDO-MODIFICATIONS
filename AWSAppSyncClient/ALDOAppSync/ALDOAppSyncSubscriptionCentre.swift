@@ -45,6 +45,30 @@ enum ALDOAppSyncSubscriptionCentreState: Equatable {
     case closed
     case connected
     case error(Error)
+}
+
+
+
+class DispatchWorkItemWrapper {
+
+    private var item: DispatchWorkItem?
+    init() {}
+    
+    var isCancelled: Bool {
+        return item?.isCancelled ?? false
+    }
+    
+    func setWork(_ work: @escaping () -> Void) {
+        item = DispatchWorkItem(block: work)
+    }
+    
+    func cancel() {
+        item?.cancel()
+    }
+    
+    func perform() {
+        item?.perform()
+    }
     
 }
 
@@ -60,7 +84,7 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     private var connectionObservers: [SubscriptionConnectionObserver] = []
     private var state: ALDOAppSyncSubscriptionCentreState = .closed
     private let logger: AWSLogger?
-    
+    private var subscriptionItems: [Int: DispatchWorkItemWrapper] = [:]
     init(client: ALDOSubscriptionConnector,
          logger: AWSLogger? = nil) {
         self.client = client
@@ -75,12 +99,9 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     /// - Parameter watcher: SubscriptionWatcher
     func subscribe(watcher: SubscriptionWatcher) {
         logger?.log(message: "Subscribing watcher", filename: #file, line: #line, funcname: #function)
-        requestConnectionInfo(for: watcher)
-            .andThen({[weak self] in self?.logger?.log(message: "Received new topics: \($0.topics)", filename: #file, line: #line, funcname: #function) })
-            .andThen({[weak self] in self?.logger?.log(message: "Received  info: \($0.info.map({ "\($0.clientId) with topics: \($0.topics)" }))", filename: #file, line: #line, funcname: #function) })
-            .andThen({ [weak self] in self?.establishConnection(with: $0)})
-            .andThen({ [weak self] in self?.connect(to: $0.topics) })
-            .catch({ [weak self] in self?.connectionErrorCallback?($0) })
+        let item = createSubscribeItem(for: watcher)
+        subscriptionItems[watcher.id] = item
+        item.perform()
     }
     
     
@@ -106,6 +127,8 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
         if let watcher = source.watcher(with: id) {
             unsubscribe(watcher: watcher)
         }
+        self.subscriptionItems[id]?.cancel()
+        self.subscriptionItems.removeValue(forKey: id)
     }
     
     /// Unsubscribes a watcher
@@ -121,6 +144,9 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
             self.source.remove(watcher: watcher, for: topic)
             self.closeConnectionIfNeed()
         }
+        
+        self.subscriptionItems[watcher.id]?.cancel()
+        self.subscriptionItems.removeValue(forKey: watcher.id)
     }
     
     /// Add observer to listen connection status
@@ -249,4 +275,59 @@ final class ALDOAppSyncSubscriptionCentre: SubscriptionCentre, SubscriptionConne
     private func notifyObserversConnectionError(_ error: Error) {
         connectionObservers.forEach({ $0.connectionError(error) })
     }
+    
+    
+    private func createSubscribeItem(for watcher: SubscriptionWatcher, withID id: String = UUID().uuidString ) -> DispatchWorkItemWrapper {
+        let item = DispatchWorkItemWrapper()
+        item.setWork { [weak self, weak item] in
+            guard let `self` = self, let item = item else { return }
+            self.performWatcherSubscription(watcher, whenItemIsCancelled: item.isCancelled)
+        }
+        return item
+    }
+    
+    
+    private func performWatcherSubscription(_ watcher: SubscriptionWatcher, whenItemIsCancelled cancelled: Bool) {
+        requestConnectionInfo(for: watcher).andThen({[weak self] in
+            self?.proccessSuccessSubscriptionInfo($0, forWatcherID: watcher.id, whenItemIsCancelled: cancelled)
+            
+        })
+            .catch { [weak self] (error) in
+                self?.proccessFailedSubscriptionInfo(error, forWatcherID: watcher.id, whenItemIsCancelled: cancelled)
+        }
+    }
+    
+    
+    private func proccessSuccessSubscriptionInfo(_ info: SubscriptionWatcherInfo,
+                                                 forWatcherID id: Int,
+                                                 whenItemIsCancelled cancelled: Bool) {
+        guard !cancelled else { return }
+        logConnectionInfo(info)
+        establishConnection(with: info)
+        connect(to: info.topics)
+        subscriptionItems.removeValue(forKey: id)
+    }
+    
+    private func proccessFailedSubscriptionInfo(_ error: Error,
+                                                forWatcherID id: Int,
+                                                whenItemIsCancelled cancelled: Bool ) {
+       
+        guard !cancelled else { return }
+        connectionErrorCallback?(error)
+        subscriptionItems.removeValue(forKey: id)
+    }
+    
+    private func logConnectionInfo(_ info: SubscriptionWatcherInfo) {
+        logger?.log(message: "Received new topics: \(info.topics)",
+                    filename: #file,
+                    line: #line,
+                    funcname: #function)
+        
+        logger?.log(message: "Received  info: \(info.info.map({ "\($0.clientId) with topics: \($0.topics)" }))",
+                    filename: #file,
+                    line: #line,
+                    funcname: #function)
+    }
+    
+
 }

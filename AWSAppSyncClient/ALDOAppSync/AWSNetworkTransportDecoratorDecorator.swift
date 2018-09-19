@@ -53,6 +53,9 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
                         line: #line,
                         funcname: #function)
             executingItems.forEach({ $0.perform() })
+        } else {
+            executingItems.forEach({ $0.cancel() })
+            executingItems = []
         }
     }
     
@@ -99,7 +102,6 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
         performItem(item)
     }
     
-    
     private func performItem(_ item: WorkItem) {
         appendItem(item)
         if canProceedExecution {
@@ -107,7 +109,6 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
             item.perform()
         }
     }
-   
 }
 
 

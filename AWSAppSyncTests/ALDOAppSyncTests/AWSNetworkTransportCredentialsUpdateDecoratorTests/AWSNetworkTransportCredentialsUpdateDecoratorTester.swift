@@ -54,7 +54,7 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
     }
     
     func emulateQueryResponseWithSuccess() {
-        networkTransportMock.sendOperationCompletion?(GraphQLResponse(operation: MockGraphQLQuery(), body: [:]), nil)
+        networkTransportMock.sendOperationCompletion.forEach({ $0(GraphQLResponse(operation: MockGraphQLQuery(), body: [:]), nil)})
     }
     
     func resetSendQueryCounter() {
@@ -64,8 +64,8 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
     func emulateQueryResponseWith401Error() {
         let urlResposne = HTTPURLResponse(url: URL(fileURLWithPath: "Empty"), statusCode: 401, httpVersion: nil, headerFields: nil)
         let error = AWSAppSyncClientError(body: nil, response: urlResposne, isInternalError: false, additionalInfo: nil)
-        networkTransportMock.sendOperationCompletion?(nil, error)
-        networkTransportMock.jsonCompletionHandler?(nil, error)
+        networkTransportMock.sendOperationCompletion.forEach({ $0(nil, error)})
+        networkTransportMock.jsonCompletionHandler.forEach({ $0(nil, error)})
     }
 
     func checkCredentialsUpdaterCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
