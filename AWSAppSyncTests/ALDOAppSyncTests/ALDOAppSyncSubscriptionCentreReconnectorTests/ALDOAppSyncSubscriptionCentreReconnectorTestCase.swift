@@ -38,7 +38,7 @@ class ALDOAppSyncSubscriptionCentreReconnectorTestCase: XCTestCase {
     
     func test_shouldn_call_reconnect_for_the_next_errors_if_connection_wasnt_established() {
         tester.subscribeWatcher()
-        tester.emulateNetworkStatusChange(.none)
+        tester.emulateCurrentNetworkStatus(.wifi)
         wait(timeInterval: defaultWaitInterval)
         tester.emulateNetworkError(MQTTStatusError())
         wait(timeInterval: defaultWaitInterval)
@@ -50,6 +50,7 @@ class ALDOAppSyncSubscriptionCentreReconnectorTestCase: XCTestCase {
     
     func test_getting_errors_during_reconnection_should_bypass_the_logic() {
         tester.subscribeWatcher()
+        tester.emulateCurrentNetworkStatus(.wifi)
         tester.emulateNetworkError(MQTTStatusError())
         wait(timeInterval: defaultWaitInterval)
         tester.emulateNetworkError(MQTTStatusError())
@@ -60,30 +61,11 @@ class ALDOAppSyncSubscriptionCentreReconnectorTestCase: XCTestCase {
         tester.checkUnsubscribeWatcherHasBeenCalled(numberOfTimes: 3)
     }
     
-    
-    func test_network_status_change_should_not_call_unsusbscribe_when_reconnect_item_exists() {
-        tester.subscribeWatcher()
-        tester.emulateNetworkError(MQTTStatusError())
-        tester.emulateNetworkStatusChange(.none)
-        wait(timeInterval: defaultWaitInterval)
-        tester.checkSubscribeWatcherHasBeenCalled(numberOfTimes: 2)
-        tester.checkUnsubscribeWatcherHasBeenCalled(numberOfTimes: 2)
-    }
-    
-    
-    func test_network_status_change_to_none_disconnects_watchers() {
-        tester.subscribeWatcher()
-        tester.emulateEstablishConnect()
-        tester.emulateNetworkStatusChange(.none)
-        wait(timeInterval: defaultWaitInterval)
-        tester.checkSubscribeWatcherHasBeenCalled(numberOfTimes: 1)
-        tester.checkUnsubscribeWatcherHasBeenCalled(numberOfTimes: 1)
-    }
-    
+
     func test_status_change_to_wifi_should_continue_the_item() {
         tester.subscribeWatcher()
-        tester.emulateEstablishConnect()
-        tester.emulateNetworkStatusChange(.none)
+        tester.emulateNetworkError(MQTTStatusError())
+        tester.emulateCurrentNetworkStatus(.wifi)
         tester.emulateNetworkStatusChange(.wifi)
         wait(timeInterval: defaultWaitInterval)
         tester.checkSubscribeWatcherHasBeenCalled(numberOfTimes: 2)

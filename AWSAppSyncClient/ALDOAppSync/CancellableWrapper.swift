@@ -45,7 +45,7 @@ class CancellableWrapper: WorkItem, Loggable {
     
     init(uniqueID: String =  UUID().uuidString,
          retryQueue: QueueObject,
-         maxRetryTimes: Int = 5) {
+         maxRetryTimes: Int = 10) {
         self.id = uniqueID
         self.maxRetryTimes = maxRetryTimes
         self.retryQueue = retryQueue

@@ -17,7 +17,7 @@ final class AWSNetworkTransportMock<T>: AWSNetworkTransport,ReachabilityObserver
     private(set) var subscriptionOperations: [T] = []
     private(set) var datas: [Data] = []
     
-    private(set) var jsonCompletionHandler: [((JSONObject?, Error?) -> Void)] = []
+    var jsonCompletionHandler: [((JSONObject?, Error?) -> Void)] = []
     private(set) var sendOperationCompletion: [((GraphQLResponse<T>?, Error?) -> Void)] = []
     
     func send(data: Data, completionHandler: ((JSONObject?, Error?) -> Void)?) {

@@ -9,12 +9,16 @@
 import Foundation
 import Reachability
 
-protocol ReachabilityObserver {
+protocol ReachabilityObserver: class {
     func hasChanged(to: Reachability.Connection)
 }
 
 public var NSURLNetworkRequestCancelledCode = -999
 public var NSURLNetworkRequestUnauthorizedCode = 401
+public var NSURLErrorDomainNotFound = -1003
+public var NSURLSoftwareTaskCancelled = 53
+
+typealias RequestConnectionState = () -> Reachability.Connection
 
 final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObserver, Loggable {
      
@@ -23,7 +27,14 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
     var currentState: Reachability.Connection = .none
     let serialQueue: QueueObject
     let itemFactory: WorkItemFactory
+    let connectionStateRequest: RequestConnectionState
     fileprivate let logger: AWSLogger?
+    fileprivate var retriableCodes: [Int] = [NSURLErrorNotConnectedToInternet,
+                                             NSURLErrorNetworkConnectionLost,
+                                             NSURLNetworkRequestUnauthorizedCode,
+                                             NSURLErrorDomainNotFound,
+                                             NSURLSoftwareTaskCancelled,
+                                             NSURLErrorTimedOut]
     
     var canProceedExecution: Bool  {
         return currentState != .none
@@ -32,11 +43,13 @@ final class AWSNetworkTransportDecorator: AWSNetworkTransport, ReachabilityObser
     init(decorated: AWSNetworkTransport,
          queueObject: QueueObject = ProcessingQueueObject.serial(withLabel: "com.SubscriptionRequestingDecorator"),
          factory: WorkItemFactory = CancellableWorkItemFactory.defaultFactory,
-         logger: AWSLogger? = nil) {
+         logger: AWSLogger? = nil,
+         connectionStateRequest: @escaping RequestConnectionState) {
         self.decorated = decorated
         self.serialQueue = queueObject
         self.itemFactory = factory
         self.logger = logger
+        self.connectionStateRequest = connectionStateRequest
     }
     
     // MARK: - ReachabilityObserver Implementation
@@ -237,13 +250,21 @@ extension AWSNetworkTransportDecorator {
     
     fileprivate func shouldPause(forError error: Error) -> Bool {
         let code = (error as NSError).code
-        return code == NSURLErrorNotConnectedToInternet ||
-               code == NSURLErrorNetworkConnectionLost
+        return  isRetriable(code: code) && connectionStateRequest() == .none
+    }
+    
+    fileprivate func isRetriable(code: Int) -> Bool {
+        return retriableCodes.contains(code)
     }
     
     fileprivate func shouldRetry(forError error: Error) -> Bool {
-        return (error as? AWSAppSyncClientError).flatMap({ $0.response})
-                                                .map({ $0.statusCode != NSURLNetworkRequestUnauthorizedCode }) ?? true
+        return isAuthAuthError(error) || isRetriable(code: (error as NSError).code)
+    }
+    
+
+    
+    fileprivate func isAuthAuthError(_  error: Error) -> Bool {
+        return (error as? AWSAppSyncClientError).flatMap({ $0.response}).map({ $0.statusCode != NSURLNetworkRequestUnauthorizedCode }) ?? false
     }
 }
 

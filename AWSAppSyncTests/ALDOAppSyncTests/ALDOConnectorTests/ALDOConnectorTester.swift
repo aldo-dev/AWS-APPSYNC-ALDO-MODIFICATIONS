@@ -14,8 +14,8 @@ final class ALDOClientFactoryMock: ALDOClientFactory {
     
     var count: Int = 0
     var mock = ALDOMQTTClientConnectorMock()
-
-    var newConnetor: ALDOMQTTClientConnector {
+    
+    func newConnector(for clientID: String) -> ALDOMQTTClientConnector {
         count += 1
         return mock
     }
@@ -25,8 +25,8 @@ final class ALDOConnectorTester {
     
     let connecterToTest: ALDOConnector
     let factoryMock = ALDOClientFactoryMock()
-    private var receivedStatus: Result<AWSIoTMQTTStatus>?
-     private var receivedMessage: Result<MessageData>?
+    private var receivedStatus: [Result<AWSIoTMQTTStatus>] = []
+    private var receivedMessage: Result<MessageData>?
     init() {
         connecterToTest = ALDOConnector(factory: factoryMock)
     
@@ -34,8 +34,16 @@ final class ALDOConnectorTester {
     
     func connect(using info: SubscriptionWatcherInfo) {
         connecterToTest.connect(using: info, statusCallBack: { statusResponse in
-            self.receivedStatus = statusResponse.result
+            self.receivedStatus.append(statusResponse.result!)
         })
+    }
+    
+    func disconnectAll() {
+        connecterToTest.disconnectAll()
+    }
+    
+    func disconnectTopic(_ topic: String) {
+        connecterToTest.disconnect(topic: topic)
     }
     
     func subscribeToTopic(topic: String) {
@@ -43,6 +51,12 @@ final class ALDOConnectorTester {
             self.receivedMessage = response.result
         }
     }
+    
+    func sendStatus(_ status: AWSIoTMQTTStatus) {
+        factoryMock.mock.sendStatus(status)
+    }
+    
+    
     
     func checkSubscribedTopics(expected: [String],file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(factoryMock.mock.subscribedTopics, expected, file: file, line: line)
@@ -60,4 +74,7 @@ final class ALDOConnectorTester {
         XCTAssertEqual(result, receivedMessage,file: file, line: line)
     }
     
+    func testStatusCallbackTriggered(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(receivedStatus.count, numberOfTimes, file: file, line: line)
+    }
 }

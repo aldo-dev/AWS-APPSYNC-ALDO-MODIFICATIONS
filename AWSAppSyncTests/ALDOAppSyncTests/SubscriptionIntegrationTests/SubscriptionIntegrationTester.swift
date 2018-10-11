@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Reachability
 @testable import AWSAppSync
 import XCTest
 
@@ -15,17 +16,26 @@ final class ALDOMQTTClientFactoryMock: ALDOClientFactory {
 
     let connectorMock = MQTTClientConnectorMock()
     let clientMock: ALDOMQTTClient
-    private(set) var newConnectorCalledCount = 0
+    var connectorMocks: [MQTTClientConnectorMock] = []
+    var newConnectorCalledCount: Int {
+        return connectorMocks.count
+    }
     init() {
         clientMock = ALDOMQTTClient(client: connectorMock)
     }
     
-    var newConnetor: ALDOMQTTClientConnector {
-        newConnectorCalledCount += 1
-        return clientMock
+    
+    func newConnector(for clientID: String) -> ALDOMQTTClientConnector {
+        let connector = MQTTClientConnectorMock()
+        connector.clientID = clientID
+        connectorMocks.append(connector)
+        
+        return ALDOMQTTClient(client: connector)
     }
-    
-    
+
+    func connectorMock(for id: String) -> [MQTTClientConnectorMock] {
+        return connectorMocks.filter({ $0.clientID == id})
+    }
 }
 
 
@@ -78,6 +88,18 @@ final class SubscriptionResponseParserMock: SubscriptionResponseParser {
 }
 
 
+final class LoggerMock: AWSLogger {
+    func log(message: String, filename: StaticString, line: Int, funcname: StaticString) {
+       
+        debugPrint("[AWS: \( filename.description.components(separatedBy: "/").last!) \(funcname) line: \(line)]: \(message) ")
+    }
+    
+    func log(error: Error, filename: StaticString, line: Int, funcname: StaticString) {
+        debugPrint("[AWS: \(filename) \(funcname) line: \(line)]: \(error.localizedDescription) ")
+    }
+    
+    
+}
 
 
 final class SubscriptionIntegrationTester {
@@ -96,30 +118,67 @@ final class SubscriptionIntegrationTester {
     let timeStampCRUDMock = TimeCRUDMock()
     var watcherResult: Result<MockSubscriptionRequest.Data?>?
     var syncWatcherResult: Result<MockGraphQLQuery.Data?>?
+    let infoFactory = SubscriptionWatcherInfoBuilder()
+    let logger: LoggerMock
+    let networkMonitor = NetworkMonitorSystem()
+    let connectionStatusProvider = ConnectionStatusMockProvider()
  
     init() {
-        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOConnector(factory: clientFactoryMock))
-        decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre)
-        subcriptiontransportReachabilityObserver = AWSNetworkTransportDecorator(decorated: subscriptionTransportMock)
-        queryReachabilityObserver = AWSNetworkTransportDecorator(decorated: networkTransportMock)
+        
+        let logger = LoggerMock()
+        self.logger = logger
+        let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOConnector(factory: clientFactoryMock),logger: logger)
+        let provider = connectionStatusProvider
+        decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre,
+                                                                   logger: logger,
+                                                                   connectionStateRequest: { provider.connection })
+        
+        subcriptiontransportReachabilityObserver = AWSNetworkTransportDecorator(decorated: subscriptionTransportMock,
+                                                                                logger: logger,
+                                                                                connectionStateRequest: { return .wifi })
+        
         subscriptionTransport = AWSNetworkTransportCredentialsUpdateDecorator(decorated: subcriptiontransportReachabilityObserver,
-                                                                              credentialsUpdater: credentialsUpdater)
+                                                                              credentialsUpdater: credentialsUpdater, logger: logger)
+        
+        queryReachabilityObserver = AWSNetworkTransportDecorator(decorated: networkTransportMock,
+                                                                 logger: logger,
+                                                                 connectionStateRequest: { return .wifi })
         
         queryTransport = AWSNetworkTransportCredentialsUpdateDecorator(decorated: queryReachabilityObserver,
-                                                                       credentialsUpdater: credentialsUpdater)
+                                                                       credentialsUpdater: credentialsUpdater,
+                                                                       logger: logger)
         
+
+        
+      
+        networkMonitor.addObserver(decoratedCentre)
+        networkMonitor.addObserver(subscriptionTransport)
+        networkMonitor.addObserver(queryTransport)
+
     }
     
     
     
-    func subscribeWatcher(withExpectedResponse response: Promise<SubscriptionWatcherInfo>) {
-        SubscriptionResponseParserMock.result = response.result!
+    func subscribeWatcher(forClientID id: String,
+                          allowedTopics: [String],
+                          connectionTopics: [String],
+                          url: String = "url") {
+        
+       
+        
+        infoFactory.clean()
+        infoFactory.setURL(url)
+        infoFactory.setTopics(connectionTopics, clientID: id)
+        infoFactory.setCurrentSubscriptionTopics(allowedTopics)
+
+        SubscriptionResponseParserMock.result = Result.success(infoFactory.info)
         let parser = GraphQLDataBasicTransformer(parser: GraphQLBasicParser(cacheKeyForObject: storeMock.cacheKeyForObject))
         let requester = ALDOSubscriptionRequester(httpLevelRequesting: subscriptionTransport,
                                                   parserType: SubscriptionResponseParserMock.self)
         let watcher = ALDOMQTTSubscritionWatcher(subscription: MockSubscriptionRequest(),
                                                  requester: requester,
-                                                 parser: parser)
+                                                 parser: parser,
+                                                 logger: logger)
         
     
         let operationSender = ALDOGraphQLOperationSender(operationSending: queryTransport,
@@ -137,7 +196,8 @@ final class SubscriptionIntegrationTester {
         
         let syncWatcher = ALDOSubscritionWatcherWithSync(decorated: watcher,
                                                          querySender: operationSenderWithSaving,
-                                                         query: MockGraphQLQuery())
+                                                         query: MockGraphQLQuery(),
+                                                         logger: logger)
         
         syncWatcher.subscribe { (result) in
             self.syncWatcherResult = result.result
@@ -150,23 +210,29 @@ final class SubscriptionIntegrationTester {
     
     
     func emulateConnectionOn() {
-        decoratedCentre.hasChanged(to: .wifi)
-        subcriptiontransportReachabilityObserver.hasChanged(to: .wifi)
-        queryReachabilityObserver.hasChanged(to: .wifi)
+        networkMonitor.hasChanged(to: .wifi)
+
+    }
+    
+    func setCurrentConnectionStatus(_ status: Reachability.Connection) {
+        connectionStatusProvider.connection = status
     }
     
     func emulateConnectionOff() {
-        decoratedCentre.hasChanged(to: .none)
-        subcriptiontransportReachabilityObserver.hasChanged(to: .none)
-        queryReachabilityObserver.hasChanged(to: .none)
+        networkMonitor.hasChanged(to: .none)
     }
     
-    func emulateConnectionStatus(_ status: AWSIoTMQTTStatus) {
-        clientFactoryMock.connectorMock.send(status: status)
+    func emulateConnectionStatus(_ status: AWSIoTMQTTStatus, for clientID: String) {
+        clientFactoryMock.connectorMock(for: clientID).forEach({ $0.send(status: status) })
+
     }
     
     func emulateSubscriptionRequestSuccess() {
         subscriptionTransportMock.jsonCompletionHandler.forEach({ $0([:], nil)})
+    }
+    
+    func cleanRequestCallbacks() {
+        subscriptionTransportMock.jsonCompletionHandler = []
     }
     
     func emulateSubscriptionRequestError() {
@@ -175,12 +241,21 @@ final class SubscriptionIntegrationTester {
     }
     
     
+    func emulateSyncQuerySuccess() {
+        networkTransportMock.sendOperationCompletion.forEach({ $0(GraphQLResponse(operation: MockGraphQLQuery(), body: [:]), nil) })
+    }
+    
     func checkSendSubscriptionRequestSent(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(subscriptionTransportMock.subscriptionOperations.count, numberOfTimes, file: file, line: line)
     }
     
+    
+    func checkSyncQuerySent(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(networkTransportMock.operations.count, numberOfTimes, file: file, line: line)
+    }
+    
     func checkSuscribeTo(topic: String, calledNumberOfTimes times: Int,file: StaticString = #file, line: UInt = #line) {
-        XCTAssertEqual(clientFactoryMock.connectorMock.subscribedTopics.filter({$0 == topic}).count,
+        XCTAssertEqual(clientFactoryMock.connectorMocks.flatMap( { $0.subscribedTopics }).filter({$0 == topic}).count,
                        times,
                        file: file,
                        line: line)
@@ -188,14 +263,14 @@ final class SubscriptionIntegrationTester {
     }
     
     func checkConnectTo(client: String, calledNumberOfTimes times: Int,file: StaticString = #file, line: UInt = #line) {
-        XCTAssertEqual(clientFactoryMock.connectorMock.connectedClients.filter({$0 == client}).count,
+        XCTAssertEqual(clientFactoryMock.connectorMocks.flatMap( {$0.connectedClients }).filter({$0 == client}).count,
                        times,
                        file: file,
                        line: line)
     }
     
     func checkConnectTo(host: String, calledNumberOfTimes times: Int,file: StaticString = #file, line: UInt = #line) {
-        XCTAssertEqual(clientFactoryMock.connectorMock.connectedHosts.filter({$0 == host}).count,
+        XCTAssertEqual(clientFactoryMock.connectorMocks.flatMap( {$0.connectedHosts }).filter({$0 == host}).count,
                        times,
                        file: file,
                        line: line)

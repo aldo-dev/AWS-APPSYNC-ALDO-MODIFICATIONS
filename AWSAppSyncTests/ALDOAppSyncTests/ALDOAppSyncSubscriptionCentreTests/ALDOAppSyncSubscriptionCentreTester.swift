@@ -27,7 +27,7 @@ final class ALDOAppSyncSubscriptionCentreTester {
     
     let centreToTest: ALDOAppSyncSubscriptionCentre
     let connectorMock: ALDOMQTTClientConnectorMock
-    let factory = SubscriptionWatcherInfoFactory()
+    let factory = SubscriptionWatcherInfoBuilder()
     var watchers: [WatcherMock] = []
     var errors: [Error] = []
     var infos: [SubscriptionWatcherInfo] = []

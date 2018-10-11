@@ -12,6 +12,11 @@ import XCTest
 @testable import Reachability
 
 
+final class ConnectionStatusMockProvider {
+    
+    var connection: Reachability.Connection = .none
+}
+
 final class AWSNetworkTransportDecoratorTester {
     
     let decoratorToTest: AWSNetworkTransportDecorator
@@ -20,14 +25,21 @@ final class AWSNetworkTransportDecoratorTester {
     var receivedErrors: [Error] = []
     let mockFactory: WorkItemMockFactory
     let maxRetryAttempts = 5
+    let connectionStatusProvider = ConnectionStatusMockProvider()
     
     init() {
         subscriptionRequestingMock = SubscriptionRequestingMock<MockSubscriptionRequest>()
         mockFactory = WorkItemMockFactory()
         mockFactory.mockItem.maxRetryTimes = maxRetryAttempts
+        let provider = connectionStatusProvider
         decoratorToTest = AWSNetworkTransportDecorator(decorated: subscriptionRequestingMock,
                                                           queueObject: ProcessingQueueObject.serial(withLabel: "SubscriptionRequestingDecoratorTester"),
-                                                          factory: mockFactory)
+                                                          factory: mockFactory,
+                                                          connectionStateRequest: { return provider.connection })
+    }
+    
+    func setCurrentState(_ state: Reachability.Connection) {
+        connectionStatusProvider.connection = state
     }
     
     func emulateNetworkConnectionStatus(_ status: Reachability.Connection) {
@@ -38,8 +50,18 @@ final class AWSNetworkTransportDecoratorTester {
         subscriptionRequestingMock.response = response
     }
     
-    func setErrorForDecorated(_ error: Error?) {
+    func setErrorWithErrorCode(_ code: Int?) {
+        subscriptionRequestingMock.error = code.map({ NSError(domain: "TEST", code: $0, userInfo: nil) })
+    }
+    
+    
+    func setErrorRetryFlowDecorated(_ error: Error?,
+                                    successResponse: JSONObject? = nil,
+                                    afterNumberOfRetries retries: Int) {
+        
         subscriptionRequestingMock.error = error
+        subscriptionRequestingMock.response = successResponse
+        subscriptionRequestingMock.retryCount = retries
     }
     
     func sendSubscriptionRequest() {
@@ -100,6 +122,10 @@ final class AWSNetworkTransportDecoratorTester {
     
     func checkItemRetryCalledExpectedNumberOfTimes(file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(mockFactory.mockItem.retryCalled, maxRetryAttempts, file: file, line: line)
+    }
+    
+    func checkItemRetryCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
+        XCTAssertEqual(mockFactory.mockItem.retryCalled, numberOfTimes, file: file, line: line)
     }
     
     func checkRetrySendsExpectedNumberOfRequests(file: StaticString = #file, line: UInt = #line) {

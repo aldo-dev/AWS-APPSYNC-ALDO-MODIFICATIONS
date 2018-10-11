@@ -34,11 +34,14 @@ final class ALDOAppSyncSubscriptionCentreReconnector: SubscriptionCentre, Subscr
     private var workItem: DispatchWorkItem?
     private var state: SubscriptionCentreConnectionState = .reconnecting
     private let logger: AWSLogger?
+    private let connectionStateRequest: RequestConnectionState
     
     init(decorated: SubscriptionCentre & SubscriptionConnectionSubject,
-         logger: AWSLogger? = nil) {
+         logger: AWSLogger? = nil,
+         connectionStateRequest: @escaping RequestConnectionState) {
         self.decorated = decorated
         self.logger = logger
+        self.connectionStateRequest = connectionStateRequest
         decorated.setConnectionError { [weak self] in self?.proccessError($0) }
         decorated.setEstablishedConnection(callback: {[weak self] in self?.connectionIsEstablished()})
     }
@@ -103,8 +106,10 @@ final class ALDOAppSyncSubscriptionCentreReconnector: SubscriptionCentre, Subscr
                     line: #line,
                     funcname: #function)
         switch to {
-            case .none: stopReconnectItemIfNeed()
-            case .wifi, .cellular: startReconnectionLogic()
+        case .wifi, .cellular:
+            queue.sync { [weak self] in self?.performWorkItemIfCan() }
+            
+        default: break
         }
     }
     
@@ -126,7 +131,7 @@ final class ALDOAppSyncSubscriptionCentreReconnector: SubscriptionCentre, Subscr
     
     private func stopReconnectItemIfNeed() {
         logger?.log(message: "Will attempt to stop reconnection for state \(state)", filename: #file, line: #line, funcname: #function)
-        queue.async { [weak self] in
+        queue.sync { [weak self] in
             if self?.state == .reconnecting {
                 self?.logger?.log(message: "cancelling reconnection", filename: #file, line: #line, funcname: #function)
                 self?.workItem?.cancel()
@@ -156,15 +161,29 @@ final class ALDOAppSyncSubscriptionCentreReconnector: SubscriptionCentre, Subscr
     }
     
     private func startReconnectionLogic() {
-        queue.async {[weak self] in
+        queue.sync {[weak self] in
             guard let `self` = self else { return }
             self.logger?.log(message: "Attemt to start reconnection for \(self.state)", filename: #file, line: #line, funcname: #function)
             if self.state == .disconnected {
                 self.state = .reconnecting
                 self.workItem = self.createReconnectItem()
-                self.workItem?.perform()
+                self.performWorkItemIfCan()
             }
         }
+    }
+    
+    
+    private func performWorkItemIfCan() {
+        if canRetry {
+            self.logger?.log(message: "will retry work item \(self.state)", filename: #file, line: #line, funcname: #function)
+            workItem?.perform()
+            workItem = nil
+        }
+    }
+    
+    private var canRetry: Bool {
+        self.logger?.log(message: "Can retry for  \(connectionStateRequest())", filename: #file, line: #line, funcname: #function)
+        return connectionStateRequest() != .none
     }
     
     private func createReconnectItem() -> DispatchWorkItem {

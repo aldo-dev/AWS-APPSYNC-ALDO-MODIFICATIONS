@@ -16,11 +16,13 @@ final class ALDOAppSyncSubscriptionCentreReconnectorTester {
     let subscriptionCentreMock: ALDOAppSyncSubscriptionCentreMock
     let reconnectorToTest: ALDOAppSyncSubscriptionCentreReconnector
     let watcherMock: WatcherMock
-    let factory = SubscriptionWatcherInfoFactory()
+    let factory = SubscriptionWatcherInfoBuilder()
+    let connectionStatusProvider = ConnectionStatusMockProvider()
     
     init() {
         subscriptionCentreMock = ALDOAppSyncSubscriptionCentreMock()
-        reconnectorToTest = ALDOAppSyncSubscriptionCentreReconnector(decorated: subscriptionCentreMock)
+        let provider = connectionStatusProvider
+        reconnectorToTest = ALDOAppSyncSubscriptionCentreReconnector(decorated: subscriptionCentreMock, connectionStateRequest: { provider.connection })
         let info = factory.getInfo(withTopics: ["1"], client: "clien", url: "url")
         watcherMock = WatcherMock(id: 1, expectedResponse: Promise<SubscriptionWatcherInfo>.init(fulfilled: info))
     }
@@ -37,6 +39,11 @@ final class ALDOAppSyncSubscriptionCentreReconnectorTester {
     func subscribeWatcher() {
         reconnectorToTest.subscribe(watcher: watcherMock)
     }
+    
+    func emulateCurrentNetworkStatus(_ status: Reachability.Connection) {
+        connectionStatusProvider.connection = status
+    }
+    
     
     func unsubscribeWatcher() {
         reconnectorToTest.unsubscribe(watcher: watcherMock)

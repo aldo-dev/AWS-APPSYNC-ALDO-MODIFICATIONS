@@ -18,7 +18,7 @@ final class ALDOSubscritionWatcherWithSyncTester {
     
     let watcherToTest: ALDOSubscritionWatcherWithSync<MockGraphQLQuery, MockGraphQLSelecitonSet>
     let watcherMock: WatcherMock
-    let factory = SubscriptionWatcherInfoFactory()
+    let factory = SubscriptionWatcherInfoBuilder()
     private var queueMock = ObjectQueueWrapper()
     var senderMock = GraphQLOperationSenderMock<MockGraphQLQuery,MockGraphQLSelecitonSet>()
     var receivedInfos: [SubscriptionWatcherInfo] = []

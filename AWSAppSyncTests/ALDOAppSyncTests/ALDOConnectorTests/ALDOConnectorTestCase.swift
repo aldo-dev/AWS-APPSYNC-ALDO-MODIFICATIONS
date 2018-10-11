@@ -40,6 +40,32 @@ class ALDOConnectorTestCase: XCTestCase {
         tester.checkFactoryHasBeenCalled(numberOfTimes: 1)
     }
     
+    
+    func test_status_callback_is_triggered_only_if_the_current_state_is_different() {
+        let defaultInfo = defatulWatcherInfo(with: [topicName(forClientID: "0", andTopicID: "0")], numberOfInfoItems: 2)
+        tester.connect(using: defaultInfo)
+        let secondInfo  = defatulWatcherInfo(with: [topicName(forClientID: "1", andTopicID: "")], numberOfInfoItems: 3)
+        tester.connect(using: secondInfo)
+        tester.sendStatus(.connected)
+        tester.sendStatus(.connected)
+    
+        tester.testStatusCallbackTriggered(numberOfTimes: 1)
+    }
+    
+    func test_status_callbac_should_not_be_triggered_after_disconnect_all() {
+        let defaultInfo = defatulWatcherInfo(with: [topicName(forClientID: "0", andTopicID: "0")], numberOfInfoItems: 2)
+        tester.connect(using: defaultInfo)
+        let secondInfo  = defatulWatcherInfo(with: [topicName(forClientID: "1", andTopicID: "")], numberOfInfoItems: 3)
+        tester.connect(using: secondInfo)
+        tester.sendStatus(.connected)
+        tester.testStatusCallbackTriggered(numberOfTimes: 1)
+        tester.disconnectAll()
+        tester.sendStatus(.disconnected)
+        tester.testStatusCallbackTriggered(numberOfTimes: 1)
+    }
+    
+
+    
     func test_subscribes_to_allowed_topic() {
         let allowedTopic = topicName(forClientID: "0", andTopicID: "0")
         let defaultInfo = defatulWatcherInfo(with: [allowedTopic], numberOfInfoItems: 2)

@@ -13,7 +13,7 @@ class SubscriptionIntegrationTests: XCTestCase {
     
     
     var tester: SubscriptionIntegrationTester!
-    let infoFactory = SubscriptionWatcherInfoFactory()
+    let infoFactory = SubscriptionWatcherInfoBuilder()
     override func setUp() {
         super.setUp()
         tester = SubscriptionIntegrationTester()
@@ -22,57 +22,32 @@ class SubscriptionIntegrationTests: XCTestCase {
     
   
     func test_initial_no_wifi_doesnt_trigger_subscription_request_send() {
-        let info = infoFactory.getInfo(withTopics: ["1"], client: "1", url: "url")
-        tester.subscribeWatcher(withExpectedResponse: Promise(fulfilled: info))
+        tester.subscribeWatcher(forClientID: "1", allowedTopics: ["1"], connectionTopics: ["1"])
         tester.checkSendSubscriptionRequestSent(numberOfTimes: 0)
     }
     
     func test_switch_from_none_to_wifi_continues_subscription_request() {
-        let info = infoFactory.getInfo(withTopics: ["1"], client: "1", url: "url")
-        tester.subscribeWatcher(withExpectedResponse: Promise(fulfilled: info))
+        tester.subscribeWatcher(forClientID: "1", allowedTopics: ["1"], connectionTopics: ["1"])
         tester.emulateConnectionOn()
         tester.checkSendSubscriptionRequestSent(numberOfTimes: 1)
     }
     
     func test_successeful_subscription_request_triggers_connect_to_client() {
-        let info = infoFactory.getInfo(withTopics: ["1"], client: "1", url: "url")
         tester.emulateConnectionOn()
-        tester.subscribeWatcher(withExpectedResponse: Promise(fulfilled: info))
+        tester.subscribeWatcher(forClientID: "1", allowedTopics: ["1"], connectionTopics: ["1"])
         tester.emulateSubscriptionRequestSuccess()
         tester.checkConnectTo(client: "1", calledNumberOfTimes: 1)
         tester.checkConnectTo(host: "url", calledNumberOfTimes: 1)
     }
     
     func test_successeful_subscription_and_connection_triggers_subscribe_to_topic() {
-        let info = infoFactory.getInfo(withTopics: ["1"], client: "1", url: "url")
         tester.emulateConnectionOn()
-        tester.subscribeWatcher(withExpectedResponse: Promise(fulfilled: info))
+        
+        tester.subscribeWatcher(forClientID: "1", allowedTopics: ["1"], connectionTopics: ["1"])
         tester.emulateSubscriptionRequestSuccess()
-        tester.emulateConnectionStatus(.connecting)
-        tester.emulateConnectionStatus(.connected)
+        tester.emulateConnectionStatus(.connecting, for: "1")
+        tester.emulateConnectionStatus(.connected, for: "1")
         tester.checkSuscribeTo(topic: "1", calledNumberOfTimes: 1)
     }
-    
-    
-    func test_status_change_to_disconnect_triggers_resubscribe() {
-        tester.emulateConnectionOn()
-        let info = infoFactory.getInfo(withTopics: ["1"], client: "1", url: "url")
-
-        tester.subscribeWatcher(withExpectedResponse: Promise(fulfilled: info))
-        tester.emulateConnectionOff()
-        tester.emulateConnectionOn()
-
-    
-        wait(timeInterval: .milliseconds(60))
-        tester.emulateSubscriptionRequestSuccess()
-
-        tester.emulateConnectionStatus(.connecting)
-        tester.emulateConnectionStatus(.connected)
-
-        tester.checkSendSubscriptionRequestSent(numberOfTimes: 2)
-        tester.checkConnectTo(host: "url", calledNumberOfTimes: 1)
-        tester.checkConnectTo(client: "1", calledNumberOfTimes: 1)
-        tester.checkSuscribeTo(topic: "1", calledNumberOfTimes: 1)
-    }
-    
+  
 }

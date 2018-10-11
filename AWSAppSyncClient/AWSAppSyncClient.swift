@@ -239,6 +239,7 @@ public protocol AWSAppSyncOfflineMutationDelegate {
     func mutationCallback(recordIdentifier: String, operationString: String, snapshot: Snapshot?, error: Error?) -> Void
 }
 
+
 // The client for making `Mutation`, `Query` and `Subscription` requests.
 public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
     var identifier: String = UUID().uuidString
@@ -251,7 +252,6 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
     var reachability: Reachability?
     
     var networkStatusWatchers: [NetworkConnectionNotification] = []
-    var reachabilityObservers: [ReachabilityObserver] = []
     private var appSyncConfiguration: AWSAppSyncClientConfiguration
     internal var httpTransport: AWSAppSyncHTTPNetworkTransport?
     internal var subscriptionTransport: AWSNetworkTransport!
@@ -265,7 +265,7 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
     private var isInitialNotification: Bool = true
     public var logger: AWSLogger?
     internal var connectionStateChangeHandler: ConnectionStateChangeHandler?
-    
+    private var networkStatusMonitorSystem: NetworkMonitorSystem
     
     /// Creates a client with the specified `AWSAppSyncClientConfiguration`.
     ///
@@ -275,6 +275,7 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         self.appSyncConfiguration = appSyncConfig
         self.logger = logger
         reachability = Reachability(hostname: self.appSyncConfiguration.url.host!)
+        self.networkStatusMonitorSystem = NetworkMonitorSystem(logger: logger)
         self.autoSubmitOfflineMutations = self.appSyncConfiguration.autoSubmitOfflineMutations
         self.store = appSyncConfig.store
         self.appSyncMQTTClient.allowCellularAccess = self.appSyncConfiguration.allowsCellularAccess
@@ -326,9 +327,17 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         let factory = ALDOMQTTClientFactory(logger: logger)
         let centre  = ALDOAppSyncSubscriptionCentre(client: ALDOConnector(factory: factory, logger: logger),
                                                     logger: logger)
-        let decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre, logger: logger)
+        let decoratedCentre = ALDOAppSyncSubscriptionCentreReconnector(decorated: centre,
+                                                                       logger: logger,
+                                                                       connectionStateRequest: { [weak self] in
+                                                                        return self?.reachability?.connection ?? .none
+        })
         subscriptionCentre = decoratedCentre
-        let reachabilityObserver = AWSNetworkTransportDecorator(decorated: httpTransport!,logger: logger)
+        let reachabilityObserver = AWSNetworkTransportDecorator(decorated: httpTransport!,
+                                                                logger: logger,
+                                                                connectionStateRequest: { [weak self] in
+                                                                    return self?.reachability?.connection ?? .none
+        })
         
         if let userPool = appSyncConfig.userPoolsAuthProvider {
             subscriptionTransport = AWSNetworkTransportCredentialsUpdateDecorator(decorated: reachabilityObserver,
@@ -337,9 +346,8 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         } else {
            subscriptionTransport = reachabilityObserver
         }
-        reachabilityObservers.append(reachabilityObserver)
-        reachabilityObservers.append(decoratedCentre)
-//        NotificationCenter.default.addObserver(self, selector: #selector(checkForReachability(note:)), name: .reachabilityChanged, object: reachability)
+        networkStatusMonitorSystem.addObserver(reachabilityObserver)
+        networkStatusMonitorSystem.addObserver(decoratedCentre)
         
         
         reachability!.whenReachable = { [weak self] reachability in
@@ -365,16 +373,10 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
                              filename: #file,
                              line: #line,
                              funcname: #function)
-            self.notifyReachabilityObservers(withState: reachability.connection)
+            self.networkStatusMonitorSystem.hasChanged(to: reachability.connection)
+
         }
-        
-        reachability!.whenUnreachable = { [weak self] reachability in
-            self?.logger?.log(message: "Reachable state: \(reachability.connection)",
-                              filename: #file,
-                              line: #line,
-                              funcname: #function)
-            self?.notifyReachabilityObservers(withState: reachability.connection)
-        }
+    
         
         do{
             try self.reachability?.startNotifier()
@@ -383,16 +385,6 @@ public class AWSAppSyncClient: NetworkConnectionNotification, Loggable {
         
     }
     
-    private func notifyReachabilityObservers(withState state: Reachability.Connection) {
-        let notify: Bool
-        switch state {
-        case .none,.wifi: notify = true
-        case .cellular: notify = appSyncConfiguration.allowsCellularAccess
-        }
-        if notify {
-            reachabilityObservers.forEach({ $0.hasChanged(to: state) })
-        }
-    }
     
     /// Fetches a query from the server or from the local cache, depending on the current contents of the cache and the specified cache policy.
     ///

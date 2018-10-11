@@ -7,6 +7,7 @@
 //
 
 import XCTest
+@testable import AWSAppSync
 
 class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
     
@@ -19,14 +20,14 @@ class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
     
     func test_if_error_401_should_call_credentials_updater() {
         tester.sendQuery()
-        tester.emulateQueryResponseWith401Error()
+        tester.emulateQueryResponseWithStatusCode(NSURLNetworkRequestUnauthorizedCode)
         tester.checkCredentialsUpdaterCalled(numberOfTimes: 1)
         
     }
     
     func test_if_error_401_for_subscription_request_should_call_credentials_updater() {
         tester.sendSubscriptionRequest()
-        tester.emulateQueryResponseWith401Error()
+        tester.emulateQueryResponseWithStatusCode(NSURLNetworkRequestUnauthorizedCode)
         tester.checkCredentialsUpdaterCalled(numberOfTimes: 1)
         tester.emulateCredentialsUpdateWithSuccess()
         tester.checkSendSubscriptionRequestCalled(numberOfTimes: 2)
@@ -48,7 +49,7 @@ class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
     
     func test_if_error_401_should_pause_next_calls() {
         tester.sendQuery()
-        tester.emulateQueryResponseWith401Error()
+        tester.emulateQueryResponseWithStatusCode(NSURLNetworkRequestUnauthorizedCode)
         tester.sendQuery()
         tester.sendQuery()
         tester.checkSendQueryCalled(numberOfTimes: 1)
@@ -56,7 +57,7 @@ class AWSNetworkTransportCredentialsUpdateDecoratorTestCase: XCTestCase {
     
     func test_should_retry_items_after_credantials_updated() {
         tester.sendQuery()
-        tester.emulateQueryResponseWith401Error()
+        tester.emulateQueryResponseWithStatusCode(NSURLNetworkRequestUnauthorizedCode)
         tester.sendQuery()
         tester.sendQuery()
         tester.checkSendQueryCalled(numberOfTimes: 1)

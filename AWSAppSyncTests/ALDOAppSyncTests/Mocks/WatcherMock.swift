@@ -37,10 +37,45 @@ final class WatcherMock: SubscriptionWatcher {
 }
 
 
-final class SubscriptionWatcherInfoFactory {
+final class SubscriptionWatcherInfoBuilder {
+    
+    private var currentSubscriptionTopics: [String] = []
+    private var topicsPerConnection: [String: [String]] = [:]
+    private(set) var mockURL = "url"
+    
+    
+    var info: SubscriptionWatcherInfo {
+        return SubscriptionWatcherInfo(topics: currentSubscriptionTopics, info: arrayOfConnections)
+    }
+    
+    func setCurrentSubscriptionTopics(_ topics: [String]) {
+        currentSubscriptionTopics = topics
+    }
+    
+    func clean() {
+        currentSubscriptionTopics = []
+        topicsPerConnection = [:]
+    }
+    
+    func setTopics(_ topics: [String], clientID: String) {
+        topicsPerConnection[clientID] = topics
+    }
+    
+    func setURL(_ url: String) {
+        mockURL = url
+    }
+    
+    
+    
     
     func getInfo(withTopics topics: [String], client: String, url: String) -> SubscriptionWatcherInfo {
         return SubscriptionWatcherInfo(topics: topics,
                                         info: [AWSSubscriptionInfo(clientId: client, url: url, topics: topics)])
+    }
+    
+  
+    
+    private var arrayOfConnections: [AWSSubscriptionInfo] {
+        return topicsPerConnection.map({ AWSSubscriptionInfo(clientId: $0.key, url: mockURL, topics: $0.value)  })
     }
 }

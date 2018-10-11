@@ -22,7 +22,6 @@
 		17D2C2071F6F44A3006C6818 /* AWSOfflineMutationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D2C2061F6F44A3006C6818 /* AWSOfflineMutationStore.swift */; };
 		17E009BB1FCAB234005031DB /* GraphQLDependencyTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E009991FCAB230005031DB /* GraphQLDependencyTracker.swift */; };
 		17E009BC1FCAB234005031DB /* AWSGraphQLSubscriptionResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E0099A1FCAB230005031DB /* AWSGraphQLSubscriptionResponse.swift */; };
-		17E009BD1FCAB234005031DB /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 17E0099B1FCAB230005031DB /* Info.plist */; };
 		17E009BE1FCAB234005031DB /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E0099C1FCAB230005031DB /* JSON.swift */; };
 		17E009BF1FCAB234005031DB /* DataLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E0099D1FCAB230005031DB /* DataLoader.swift */; };
 		17E009C01FCAB234005031DB /* InMemoryNormalizedCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E0099E1FCAB230005031DB /* InMemoryNormalizedCache.swift */; };
@@ -96,6 +95,7 @@
 		89330D84211AA942006D58ED /* ALDOSubscriptionRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89330D7C211AA942006D58ED /* ALDOSubscriptionRequester.swift */; };
 		89330D85211AA942006D58ED /* ALDOSubscriptionWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89330D7D211AA942006D58ED /* ALDOSubscriptionWatcher.swift */; };
 		89330D86211AA942006D58ED /* ALDOAppSyncSubscriptionCentre.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89330D7E211AA942006D58ED /* ALDOAppSyncSubscriptionCentre.swift */; };
+		893359CA215BE07400A39907 /* NetworkMonitorSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893359C9215BE07400A39907 /* NetworkMonitorSystem.swift */; };
 		89398F02212A479E0092BBE8 /* AWSNetworkTransportCredentialsUpdateDecorator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89398F01212A479E0092BBE8 /* AWSNetworkTransportCredentialsUpdateDecorator.swift */; };
 		8943B4B1211DD531002F11BD /* CancellableWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8943B4B0211DD531002F11BD /* CancellableWrapper.swift */; };
 		895F92B3211C9682000D42DD /* AWSAppSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895F92B2211C9682000D42DD /* AWSAppSyncTests.swift */; };
@@ -243,6 +243,7 @@
 		89330D7C211AA942006D58ED /* ALDOSubscriptionRequester.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ALDOSubscriptionRequester.swift; sourceTree = "<group>"; };
 		89330D7D211AA942006D58ED /* ALDOSubscriptionWatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ALDOSubscriptionWatcher.swift; sourceTree = "<group>"; };
 		89330D7E211AA942006D58ED /* ALDOAppSyncSubscriptionCentre.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ALDOAppSyncSubscriptionCentre.swift; sourceTree = "<group>"; };
+		893359C9215BE07400A39907 /* NetworkMonitorSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitorSystem.swift; sourceTree = "<group>"; };
 		89398F01212A479E0092BBE8 /* AWSNetworkTransportCredentialsUpdateDecorator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AWSNetworkTransportCredentialsUpdateDecorator.swift; sourceTree = "<group>"; };
 		8943B4B0211DD531002F11BD /* CancellableWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CancellableWrapper.swift; sourceTree = "<group>"; };
 		895F92B0211C9682000D42DD /* AWSAppSyncTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AWSAppSyncTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -507,6 +508,7 @@
 				892FA1D4212721A8002D9CB6 /* WeakRetainer.swift */,
 				89B3BA9F21472417009EC67B /* ALDOConnector.swift */,
 				89A4B52E21474C1300BA5F70 /* ALDOConnection.swift */,
+				893359C9215BE07400A39907 /* NetworkMonitorSystem.swift */,
 			);
 			path = ALDOAppSync;
 			sourceTree = "<group>";
@@ -741,7 +743,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17E009BD1FCAB234005031DB /* Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -838,6 +839,7 @@
 				17E009CE1FCAB234005031DB /* GraphQLError.swift in Sources */,
 				89330D7F211AA942006D58ED /* ALDOTimestampCRUD.swift in Sources */,
 				41C7C9BB213864EF000C19E4 /* AWSIoTMQTTClient.m in Sources */,
+				893359CA215BE07400A39907 /* NetworkMonitorSystem.swift in Sources */,
 				17D2C2071F6F44A3006C6818 /* AWSOfflineMutationStore.swift in Sources */,
 				892FA1D62127221B002D9CB6 /* WeakRetainer.swift in Sources */,
 				17E009BB1FCAB234005031DB /* GraphQLDependencyTracker.swift in Sources */,

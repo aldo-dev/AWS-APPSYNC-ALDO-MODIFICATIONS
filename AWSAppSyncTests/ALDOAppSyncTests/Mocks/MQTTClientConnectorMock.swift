@@ -18,6 +18,7 @@ final class MQTTClientConnectorMock: MQTTClientConnector {
     private(set) var subscribedTopics: [String] = []
     private(set) var extendedCallbacks: [AWSIoTMQTTExtendedNewMessageBlock] = []
     private(set) var unsubscribedTopics: [String] = []
+    var clientID = ""
     
     func send(status: AWSIoTMQTTStatus) {
         statusCallbacks.forEach({ $0(status) })

@@ -61,12 +61,15 @@ final class AWSNetworkTransportCredentialsUpdateDecoratorTester {
         networkTransportMock.clear()
     }
     
-    func emulateQueryResponseWith401Error() {
-        let urlResposne = HTTPURLResponse(url: URL(fileURLWithPath: "Empty"), statusCode: 401, httpVersion: nil, headerFields: nil)
+    func emulateQueryResponseWithStatusCode(_ code: Int) {
+        let urlResposne = HTTPURLResponse(url: URL(fileURLWithPath: "Empty"), statusCode: code, httpVersion: nil, headerFields: nil)
         let error = AWSAppSyncClientError(body: nil, response: urlResposne, isInternalError: false, additionalInfo: nil)
         networkTransportMock.sendOperationCompletion.forEach({ $0(nil, error)})
         networkTransportMock.jsonCompletionHandler.forEach({ $0(nil, error)})
     }
+    
+    
+    
 
     func checkCredentialsUpdaterCalled(numberOfTimes: Int,file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(numberOfTimes, credentialsUpdaterMock.refreshCalled,file: file, line: line)

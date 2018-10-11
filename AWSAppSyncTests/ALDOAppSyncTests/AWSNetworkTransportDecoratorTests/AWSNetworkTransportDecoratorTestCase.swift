@@ -7,11 +7,13 @@
 //
 
 import XCTest
+@testable import AWSAppSync
 
 class AWSNetworkTransportDecoratorTestCase: XCTestCase {
     
     
     var tester: AWSNetworkTransportDecoratorTester!
+    
     override func setUp() {
         super.setUp()
         tester = AWSNetworkTransportDecoratorTester()
@@ -64,12 +66,12 @@ class AWSNetworkTransportDecoratorTestCase: XCTestCase {
     func test_should_resend_request_when_network_becomes_available_if_request_ended_up_with_error() {
         // Setting up initial state
         tester.emulateNetworkConnectionStatus(.cellular)
-        
-        tester.setErrorForDecorated(NSError(domain: "TEST", code: -1009, userInfo: nil))
+        tester.setCurrentState(.none)
+        tester.setErrorWithErrorCode(NSURLErrorNetworkConnectionLost)
         tester.sendSubscriptionRequest()
         
         // prepare respose for the retry
-        tester.setErrorForDecorated(nil)
+        tester.setErrorWithErrorCode(nil)
         tester.setSuccessResponseForDecorated()
         
         // emulating networkchange
@@ -83,12 +85,12 @@ class AWSNetworkTransportDecoratorTestCase: XCTestCase {
     func test_should_resend_data_request_when_network_becomes_available_if_request_ended_up_with_error() {
         // Setting up initial state
         tester.emulateNetworkConnectionStatus(.cellular)
-        
-        tester.setErrorForDecorated(NSError(domain: "TEST", code: -1009, userInfo: nil))
+        tester.setCurrentState(.none)
+        tester.setErrorWithErrorCode(NSURLErrorNetworkConnectionLost)
         tester.sendDataRequest()
         
         // prepare respose for the retry
-        tester.setErrorForDecorated(nil)
+        tester.setErrorWithErrorCode(nil)
         tester.setSuccessResponseForDecorated()
         
         // emulating networkchange
@@ -100,13 +102,46 @@ class AWSNetworkTransportDecoratorTestCase: XCTestCase {
     }
     
     
-    func test_retries_to_send_element() {
+  
+    
+    func test_all_codes_for_to_retry_logic() {
+        let codes = [NSURLErrorNotConnectedToInternet,
+                     NSURLErrorNetworkConnectionLost,
+                     NSURLNetworkRequestUnauthorizedCode,
+                     NSURLErrorDomainNotFound,
+                     NSURLSoftwareTaskCancelled,
+                     NSURLErrorTimedOut]
+        
+        codes.forEach { (code) in
+            self.setUp()
+            self.run_test_routine_retries_to_send_element_for(code: code)
+        }
+    }
+    
+    func test_if_network_is_off_and_error_NSURLErrorNetworkConnectionLost_should_pause() {
         tester.emulateNetworkConnectionStatus(.cellular)
-        tester.setErrorForDecorated(NSError(domain: "TEST", code: 1, userInfo: nil))
+        tester.setErrorWithErrorCode(NSURLErrorNetworkConnectionLost)
+        tester.setCurrentState(.none)
         tester.sendSubscriptionRequest()
+        tester.checkDecoratedSendRequestHasBeenCalled(numberOfTimes: 1)
+        tester.checkReceivedSuccessResponse(numberOfTimes: 0)
+        tester.checkReceivedErrorResponse(numberOfTimes: 0)
+        tester.checkItemRetryCalled(numberOfTimes: 0)
         
-        tester.checkRetrySendsExpectedNumberOfRequests()
-        tester.checkItemRetryCalledExpectedNumberOfTimes()
-        
+    }
+    
+    
+    private func run_test_routine_retries_to_send_element_for(code: Int, file: StaticString = #file, line: UInt = #line) {
+        tester.emulateNetworkConnectionStatus(.cellular)
+        let error = NSError(domain: "TEST", code: code, userInfo: nil)
+        tester.setErrorRetryFlowDecorated(error,
+                                          successResponse: [:],
+                                          afterNumberOfRetries: 6)
+        tester.setCurrentState(.wifi)
+        tester.sendSubscriptionRequest()
+        tester.checkDecoratedSendRequestHasBeenCalled(numberOfTimes: 6)
+        tester.checkItemRetryCalled(numberOfTimes: 5)
+        tester.checkReceivedSuccessResponse(numberOfTimes: 1)
+        tester.checkReceivedErrorResponse(numberOfTimes: 0)
     }
 }

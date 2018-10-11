@@ -13,7 +13,7 @@ protocol ALDOSubscriptionConnector: ALDOMQTTTopicSubscriber {
 }
 
 protocol ALDOClientFactory {
-    var newConnetor: ALDOMQTTClientConnector { get }
+    func newConnector(for clientID: String) -> ALDOMQTTClientConnector
 }
 
 final class ALDOMQTTClientFactory: ALDOClientFactory {
@@ -23,7 +23,7 @@ final class ALDOMQTTClientFactory: ALDOClientFactory {
         self.logger = logger
     }
     
-    var newConnetor: ALDOMQTTClientConnector {
+    func newConnector(for clientID: String) -> ALDOMQTTClientConnector {
         return ALDOMQTTClient(client: AWSIoTMQTTClient<AnyObject, AnyObject>(), logger: logger)
     }
 }
@@ -35,6 +35,7 @@ final class ALDOConnector: ALDOSubscriptionConnector {
     let logger: AWSLogger?
     var statusCallbacks: [String: (Promise<AWSIoTMQTTStatus>) -> Void] = [:]
     var messageCallbacks: [String:  (Promise<MessageData>) -> Void] = [:]
+    var statusCallback: ((Promise<AWSIoTMQTTStatus>) -> Void)?
     var lastStatus: AWSIoTMQTTStatus = .unknown
     
     init(factory: ALDOClientFactory, logger: AWSLogger? = nil) {
@@ -50,7 +51,8 @@ final class ALDOConnector: ALDOSubscriptionConnector {
     
     private func connect(using info: AWSSubscriptionInfo, statusCallBack: @escaping (Promise<AWSIoTMQTTStatus>) -> Void) {
         logger?.log(message: "Will attempt to connect", filename: #file, line: #line, funcname: #function)
-        statusCallbacks[info.clientId] = statusCallBack
+        
+        self.statusCallback = statusCallBack
         
         let connection: ALDOConnection
     
@@ -60,7 +62,7 @@ final class ALDOConnector: ALDOSubscriptionConnector {
         } else {
             logger?.log(message: "Could not found connection for topics: \(info.topics). Will Create a new one", filename: #file, line: #line, funcname: #function)
             
-            connection =  ALDOConnection(client: factory.newConnetor, allowedTopics: info.topics)
+            connection =  ALDOConnection(client: factory.newConnector(for: info.clientId), allowedTopics: info.topics)
             connections.append(connection)
             
             connection.client.connect(withClientID: info.clientId, host: info.url,
@@ -71,13 +73,13 @@ final class ALDOConnector: ALDOSubscriptionConnector {
     func subscribe(toTopic topic: String!, callback: @escaping (Promise<MessageData>) -> Void) {
         
         guard let connection = connection(for: topic) else {
-            logger?.log(message: "Can't Subscribe because could not found connection for topic: \(topic)", filename: #file, line: #line, funcname: #function)
+            logger?.log(message: "Can't Subscribe because could not found connection for topic: \(topic ?? "")", filename: #file, line: #line, funcname: #function)
             callback(Promise(rejected: ALDOMQTTClientError.subscribingIsNotAllowed))
             return
         }
         
         guard !connection.subscribed(toTopics: topic) else {
-            logger?.log(message: "Already subscribed to the topic: \(topic)", filename: #file, line: #line, funcname: #function)
+            logger?.log(message: "Already subscribed to the topic: \(topic ?? "")", filename: #file, line: #line, funcname: #function)
             return
         }
         
@@ -86,6 +88,7 @@ final class ALDOConnector: ALDOSubscriptionConnector {
     
     
     func disconnect(topic: String) {
+        logger?.log(message: "Disconnection called for topic: \(topic)", filename: #file, line: #line, funcname: #function)
         connections.filter({ $0.subscribed(toTopics: topic) })
                    .forEach({ $0.disconnect(topic: topic) })
         
@@ -96,13 +99,24 @@ final class ALDOConnector: ALDOSubscriptionConnector {
     }
     
     func disconnectAll() {
+        logger?.log(message: "Disconnection called. Current state is: \(lastStatus.rawValue)", filename: #file, line: #line, funcname: #function)
         connections.forEach({ $0.disconnectAll() })
         connections = []
         statusCallbacks = [:]
+        statusCallback = nil
+        lastStatus = .disconnected
     }
     
     private func processStatus(_ statusResult: Promise<AWSIoTMQTTStatus>, for clientID: String) {
-        statusCallbacks[clientID]?(statusResult)
+        statusResult.andThen { [weak self] (status) in
+            guard let `self` = self else { return }
+            if status != self.lastStatus {
+                
+                self.logger?.log(message: "Changing status from  \(self.lastStatus) to \(status)", filename: #file, line: #line, funcname: #function)
+                self.lastStatus = status
+                self.statusCallback?(Promise(fulfilled: status))
+            }
+        }
     }
     
     private func connection(for topic: String) -> ALDOConnection? {

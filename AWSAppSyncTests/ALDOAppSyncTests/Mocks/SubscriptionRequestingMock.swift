@@ -23,10 +23,12 @@ final class SubscriptionRequestingMock<T>: AWSNetworkTransport where T : GraphQL
     var response: JSONObject? = nil
     var error: Error? = nil
     
+    var retryCount: Int = -1
+    
     func sendSubscriptionRequest<Operation>(operation: Operation,
                                             completionHandler: @escaping (JSONObject?, Error?) -> Void) throws -> Cancellable where Operation : GraphQLOperation {
         operations.append(operation as! T)
-        if let error = self.error {
+        if let error = self.error, retryCount < 0 || operations.count < retryCount {
             completionHandler(nil,error)
         } else {
             completionHandler(response,nil)
@@ -37,7 +39,7 @@ final class SubscriptionRequestingMock<T>: AWSNetworkTransport where T : GraphQL
     
     func send(data: Data, completionHandler: ((JSONObject?, Error?) -> Void)?) {
         datas.append(data)
-        if let error = self.error {
+        if let error = self.error, retryCount < 0 || datas.count < retryCount {
             completionHandler?(nil,error)
         } else {
             completionHandler?(response,nil)
@@ -46,7 +48,7 @@ final class SubscriptionRequestingMock<T>: AWSNetworkTransport where T : GraphQL
     
     func send<Operation>(operation: Operation, overrideMap: [String : String], completionHandler: @escaping (GraphQLResponse<Operation>?, Error?) -> Void) -> Cancellable where Operation : GraphQLOperation {
         operations.append(operation as! T)
-        if let error = self.error {
+        if let error = self.error,  retryCount < 0 || operations.count < retryCount {
             completionHandler(nil,error)
         } else {
             completionHandler(GraphQLResponse(operation: operation, body: response!),nil)
